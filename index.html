@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model Release Radar</title>
+<meta name="description" content="A daily list of new AI models and papers, with the numbers behind it shown.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">MR</div>
+    <div class="brand-name">Model Release Radar</div>
+  </div>
+  <div class="chips">
+    <span class="chip">BigQuery</span>
+    <span class="chip">Dataform</span>
+    <span class="chip">Gemini API</span>
+    <span class="chip">Cloud Run</span>
+    <span class="chip">Cloud Scheduler</span>
+  </div>
+  <div class="status">
+    <span class="pulse-dot"></span>
+    <span class="status-pill">Next run in 54m · 0 missed in 30d</span>
+    <button id="theme-toggle" class="toggle-btn" type="button">● Dark</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="eyebrow">NEW AI MODELS AND PAPERS, EACH DAY</div>
+  <h1>A daily list of new AI models and papers, with the numbers behind it shown.</h1>
+  <p class="lede">Pulls from HuggingFace, arXiv, and GitHub trending into BigQuery through Dataform. An agent tags what's worth noticing, and I show its reasoning and count every row so you can check it yourself.</p>
+  <div class="stat-row">
+    <div class="stat"><div class="stat-num">3</div><div class="stat-label">sources</div></div>
+    <div class="stat"><div class="stat-num">47</div><div class="stat-label">classified today</div></div>
+    <div class="stat"><div class="stat-num">99.2%</div><div class="stat-label">uptime, 30d</div></div>
+    <div class="stat stat-last"><div class="stat-num">100%</div><div class="stat-label">rows reconciled</div></div>
+  </div>
+</section>
+
+<section class="radar">
+  <div class="section-title">Today's radar</div>
+  <div class="section-sub">Ranked by the agent's notability score</div>
+  <div class="card-grid" id="radar-grid">
+
+    <article class="card card-indigo">
+      <div class="card-top">
+        <span class="card-source">HUGGINGFACE</span>
+        <span class="badge badge-indigo">NOTABLE — ARCH</span>
+      </div>
+      <div class="card-title">Qwen3-Coder-480B</div>
+      <div class="card-desc">480B MoE coding model, 262k context</div>
+      <div class="card-time">2h ago</div>
+    </article>
+
+    <article class="card card-teal">
+      <div class="card-top">
+        <span class="card-source">ARXIV</span>
+        <span class="badge badge-teal">NOTABLE — BENCH</span>
+      </div>
+      <div class="card-title">Scaling Laws for Agentic Tool Use</div>
+      <div class="card-desc">New paper on RL sample efficiency</div>
+      <div class="card-time">4h ago</div>
+    </article>
+
+    <article class="card card-amber">
+      <div class="card-top">
+        <span class="card-source">GITHUB</span>
+        <span class="badge badge-muted">INCREMENTAL</span>
+      </div>
+      <div class="card-title">vllm-project/vllm</div>
+      <div class="card-desc">+2,100 stars this week — speculative decoding update</div>
+      <div class="card-time">6h ago</div>
+    </article>
+
+    <article class="card card-indigo">
+      <div class="card-top">
+        <span class="card-source">HUGGINGFACE</span>
+        <span class="badge badge-indigo">NOTABLE — ARCH</span>
+      </div>
+      <div class="card-title">Llama-4-Scout-Instruct</div>
+      <div class="card-desc">17B active / 109B total, natively multimodal</div>
+      <div class="card-time">9h ago</div>
+    </article>
+
+    <article class="card card-teal">
+      <div class="card-top">
+        <span class="card-source">ARXIV</span>
+        <span class="badge badge-muted">INCREMENTAL</span>
+      </div>
+      <div class="card-title">Mixture-of-Depths Revisited</div>
+      <div class="card-desc">Layer-skipping for inference cost reduction</div>
+      <div class="card-time">14h ago</div>
+    </article>
+
+    <article class="card card-amber">
+      <div class="card-top">
+        <span class="card-source">GITHUB</span>
+        <span class="badge badge-muted">INCREMENTAL</span>
+      </div>
+      <div class="card-title">dataform-co/dataform</div>
+      <div class="card-desc">New incremental-table docs merged</div>
+      <div class="card-time">22h ago</div>
+    </article>
+
+  </div>
+</section>
+
+<section class="reasoning">
+  <div class="section-title">Why the agent flagged this</div>
+  <div class="section-sub">Each tag comes with the reasoning behind it</div>
+  <div class="reasoning-card">
+    <div class="reasoning-head">
+      <div class="reasoning-title">Qwen3-Coder-480B <span class="reasoning-arrow">→ Notable — New Architecture</span></div>
+      <div class="reasoning-conf">confidence 0.91</div>
+    </div>
+    <div class="reasoning-steps">
+      <div>1. params=480B exceeds notable threshold (&gt;100B) → flag candidate</div>
+      <div>2. license=Apache-2.0 → checked against restrictive-license exclusion list → pass</div>
+      <div>3. cross-referenced GitHub trending: repo stars +840 in 24h → corroborates signal</div>
+      <div>4. final: NOTABLE — New Architecture · confidence 0.91</div>
+    </div>
+  </div>
+</section>
+
+<section class="transparency">
+  <div class="section-title">Pipeline transparency</div>
+  <div class="section-sub">Every row gets counted from raw to modeled, so nothing goes missing quietly.</div>
+
+  <div class="table-card">
+    <div class="table-row table-head">
+      <div>SOURCE</div><div>RAW ROWS (24H)</div><div>MODELED ROWS</div><div>MATCH</div><div class="align-right">LAST RUN</div>
+    </div>
+    <div class="table-row">
+      <div>HuggingFace API</div><div class="mono">1,204</div><div class="mono">1,204</div><div class="mono match-teal">100%</div><div class="align-right mono muted">6m ago</div>
+    </div>
+    <div class="table-row">
+      <div>arXiv (cs.CL, cs.LG)</div><div class="mono">812</div><div class="mono">809</div><div class="mono match-indigo">99.6%</div><div class="align-right mono muted">6m ago</div>
+    </div>
+    <div class="table-row table-row-last">
+      <div>GitHub Trending</div><div class="mono">340</div><div class="mono">340</div><div class="mono match-teal">100%</div><div class="align-right mono muted">6m ago</div>
+    </div>
+  </div>
+  <div class="table-footnote">3 arXiv rows were duplicates and got excluded; the count above reflects that. DAG status: <span class="healthy">● healthy</span> · next run in 54m</div>
+
+  <div class="how-it-runs">
+    <div class="section-title">How it runs</div>
+    <div class="section-sub">Runs on GCP free-tier services only</div>
+    <div class="pipeline-row">
+      <div class="pipe-step">Cloud<br>Scheduler</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">Cloud Run<br>(ingest)</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">BigQuery<br>(raw)</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step pipe-step-accent">Dataform<br>(transform)</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">BigQuery<br>(modeled)</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step pipe-step-accent">Gemini API<br>(classify)</div>
+      <span class="pipe-arrow">→</span>
+      <div class="pipe-step">Cloud Run<br>(dashboard)</div>
+    </div>
+  </div>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
