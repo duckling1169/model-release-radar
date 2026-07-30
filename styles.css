@@ -189,14 +189,6 @@ a { color: inherit; }
   margin: 0 auto;
 }
 
-.reasoning {
-  padding: 52px 44px;
-  background: var(--surface);
-  border-top: 1px solid var(--border-soft);
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
 .section-title {
   font: 600 22px 'IBM Plex Sans', sans-serif;
   margin-bottom: 4px;
@@ -291,38 +283,6 @@ a { color: inherit; }
 .card-time {
   font: 400 11px 'IBM Plex Mono', monospace;
   color: var(--text-muted);
-}
-
-.reasoning-card {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 28px 32px;
-}
-
-.reasoning-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.reasoning-title { font: 600 16px 'IBM Plex Sans', sans-serif; }
-
-.reasoning-arrow { color: var(--text-muted); font-weight: 400; }
-
-.reasoning-conf {
-  font: 600 11px 'IBM Plex Mono', monospace;
-  color: var(--indigo);
-}
-
-.reasoning-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font: 400 13.5px/1.6 'IBM Plex Mono', monospace;
-  color: var(--text-secondary);
 }
 
 .table-card {
