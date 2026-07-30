@@ -202,11 +202,12 @@ a { color: inherit; }
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
 .card {
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-top: 3px solid var(--indigo);
@@ -242,6 +243,7 @@ a { color: inherit; }
   font: 600 15px 'IBM Plex Sans', sans-serif;
   margin-bottom: 6px;
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
 .card-title:hover { text-decoration: underline; }
@@ -352,7 +354,7 @@ a { color: inherit; }
 }
 
 @media (max-width: 900px) {
-  .card-grid { grid-template-columns: repeat(2, 1fr); }
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
