@@ -1,0 +1,38 @@
+config { type: "operations", dependencies: ["source_id_uniqueness", "lineage_complete"] }
+
+DECLARE mrr_run_id STRING DEFAULT "${dataform.projectConfig.vars.run_id}";
+
+MERGE `project-90394262-994e-4667-90d.mrr_gold.radar_items` target
+USING (
+  SELECT 'huggingface' source, source_id, DATE(source_published_at) radar_date, source_published_at,
+    source_id title, CAST(NULL AS STRING) summary, canonical_url, author author_or_org, source_metadata, observed_at,
+    bronze_run_id, bronze_page_number, source_record_index, processed_at, transform_version
+  FROM `project-90394262-994e-4667-90d.mrr_silver.huggingface_model_releases`
+  WHERE bronze_run_id = mrr_run_id AND qualifies
+  UNION ALL
+  SELECT 'arxiv', source_id, DATE(source_published_at), source_published_at, title, summary, canonical_url,
+    ARRAY_TO_STRING(JSON_VALUE_ARRAY(authors_json), ', '), source_metadata, observed_at, bronze_run_id,
+    bronze_page_number, source_record_index, processed_at, transform_version
+  FROM `project-90394262-994e-4667-90d.mrr_silver.arxiv_paper_submissions` WHERE bronze_run_id = mrr_run_id
+) staging ON target.source = staging.source AND target.source_id = staging.source_id
+WHEN NOT MATCHED THEN INSERT ROW;
+
+MERGE `project-90394262-994e-4667-90d.mrr_gold.daily_source_metrics` target
+USING (
+  SELECT DATE(fetch.window_end) metric_date, fetch.run_id, fetch.source, fetch.window_start, fetch.window_end,
+    fetch.source_status, fetch.page_count raw_page_count, fetch.response_record_count raw_response_record_count,
+    fetch.window_record_count raw_window_record_count, transform.parsed_count silver_parsed_count,
+    transform.inserted_count silver_inserted_count, transform.duplicate_count silver_duplicate_count,
+    transform.qualified_count silver_qualified_count, COUNT(item.source_id) gold_item_count,
+    CURRENT_TIMESTAMP() processed_at, 'm4-v1' transform_version
+  FROM `project-90394262-994e-4667-90d.mrr_bronze.fetch_runs` fetch
+  JOIN `project-90394262-994e-4667-90d.mrr_silver.transform_runs` transform
+    ON fetch.run_id = transform.run_id AND fetch.source = transform.source
+  LEFT JOIN `project-90394262-994e-4667-90d.mrr_gold.radar_items` item
+    ON item.bronze_run_id = fetch.run_id AND item.source = fetch.source
+  WHERE fetch.run_id = mrr_run_id AND fetch.source_status = 'succeeded'
+  GROUP BY metric_date, fetch.run_id, fetch.source, fetch.window_start, fetch.window_end, fetch.source_status,
+    raw_page_count, raw_response_record_count, raw_window_record_count, silver_parsed_count,
+    silver_inserted_count, silver_duplicate_count, silver_qualified_count, processed_at, transform_version
+) staging ON target.run_id = staging.run_id AND target.source = staging.source
+WHEN NOT MATCHED THEN INSERT ROW;

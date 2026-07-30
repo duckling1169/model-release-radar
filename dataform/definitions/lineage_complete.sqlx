@@ -1,0 +1,9 @@
+config { type: "assertion", dependencies: ["huggingface_silver"] }
+
+SELECT source_id FROM `project-90394262-994e-4667-90d.mrr_silver.huggingface_model_releases`
+WHERE bronze_run_id = "${dataform.projectConfig.vars.run_id}"
+  AND (bronze_run_id IS NULL OR bronze_page_number IS NULL OR transform_version IS NULL)
+UNION ALL
+SELECT source_id FROM `project-90394262-994e-4667-90d.mrr_silver.arxiv_paper_submissions`
+WHERE bronze_run_id = "${dataform.projectConfig.vars.run_id}"
+  AND (bronze_run_id IS NULL OR bronze_page_number IS NULL OR transform_version IS NULL)

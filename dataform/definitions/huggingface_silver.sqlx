@@ -1,0 +1,50 @@
+config {
+  type: "operations",
+  tags: ["m4"],
+  hasOutput: true
+}
+
+DECLARE mrr_run_id STRING DEFAULT "${dataform.projectConfig.vars.run_id}";
+
+MERGE `project-90394262-994e-4667-90d.mrr_silver.huggingface_model_releases` target
+USING (
+  SELECT
+    COALESCE(JSON_VALUE(model, '$.modelId'), JSON_VALUE(model, '$.id')) AS source_id,
+    TIMESTAMP(JSON_VALUE(model, '$.createdAt')) AS source_published_at,
+    raw.fetched_at AS observed_at,
+    JSON_VALUE(model, '$.author') AS author,
+    CONCAT('https://huggingface.co/', COALESCE(JSON_VALUE(model, '$.modelId'), JSON_VALUE(model, '$.id'))) AS canonical_url,
+    JSON_VALUE(model, '$.pipeline_tag') AS pipeline_tag,
+    EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'^(?!.*(readme|license|\\.gitignore|\\.gitattributes)).+')) AS has_usable_artifact,
+    JSON_QUERY(model, '$.config') IS NOT NULL AS has_usable_config,
+    (JSON_VALUE(model, '$.pipeline_tag') IS NOT NULL OR JSON_QUERY(model, '$.config') IS NOT NULL OR EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'^(?!.*(readme|license|\\.gitignore|\\.gitattributes)).+'))) AS qualifies,
+    IF(JSON_VALUE(model, '$.pipeline_tag') IS NULL AND JSON_QUERY(model, '$.config') IS NULL AND NOT EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'^(?!.*(readme|license|\\.gitignore|\\.gitattributes)).+')), 'missing_pipeline_tag_and_usable_artifact_or_config', NULL) AS exclusion_reason,
+    model AS source_metadata, raw.run_id AS bronze_run_id, raw.page_number AS bronze_page_number,
+    offset AS source_record_index, CURRENT_TIMESTAMP() AS processed_at, 'm4-v1' AS transform_version
+  FROM `project-90394262-994e-4667-90d.mrr_bronze.huggingface_responses_raw` raw,
+    UNNEST(JSON_QUERY_ARRAY(raw.raw_body)) AS model WITH OFFSET AS offset
+  WHERE raw.run_id = mrr_run_id
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY COALESCE(JSON_VALUE(model, '$.modelId'), JSON_VALUE(model, '$.id')) ORDER BY raw.page_number, offset) = 1
+) staging
+ON target.source_id = staging.source_id
+WHEN NOT MATCHED THEN INSERT ROW;
+
+MERGE `project-90394262-994e-4667-90d.mrr_silver.transform_runs` target
+USING (
+  SELECT mrr_run_id AS run_id, 'huggingface' AS source,
+    COUNT(*) AS parsed_count,
+    COUNTIF(target_row.source_id IS NULL) AS inserted_count,
+    COUNT(*) - COUNTIF(target_row.source_id IS NULL) AS duplicate_count,
+    COUNTIF(staging.qualifies) AS qualified_count,
+    'succeeded' AS status, CURRENT_TIMESTAMP() AS processed_at, 'm4-v1' AS transform_version
+  FROM (
+    SELECT COALESCE(JSON_VALUE(model, '$.modelId'), JSON_VALUE(model, '$.id')) source_id,
+      JSON_VALUE(model, '$.pipeline_tag') IS NOT NULL OR JSON_QUERY(model, '$.config') IS NOT NULL AS qualifies
+    FROM `project-90394262-994e-4667-90d.mrr_bronze.huggingface_responses_raw` raw, UNNEST(JSON_QUERY_ARRAY(raw.raw_body)) model
+    WHERE raw.run_id = mrr_run_id
+  ) staging
+  LEFT JOIN `project-90394262-994e-4667-90d.mrr_silver.huggingface_model_releases` target_row USING (source_id)
+  GROUP BY run_id, source, status, processed_at, transform_version
+) staging
+ON target.run_id = staging.run_id AND target.source = staging.source
+WHEN NOT MATCHED THEN INSERT ROW;
