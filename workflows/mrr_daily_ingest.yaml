@@ -1,0 +1,49 @@
+# Cloud Scheduler starts this workflow with `{"test_failure": false}` at 00:20 UTC.
+# `test_failure: true` is accepted only for the one-time alert-path verification.
+main:
+  params: [input]
+  steps:
+    - initialize:
+        assign:
+          - test_failure: ${map.get(input, "test_failure")}
+    - test_gate:
+        switch:
+          - condition: ${test_failure}
+            next: log_test_failure
+    - derive_window:
+        assign:
+          - window_start: ${text.substring(time.format(sys.now() - 86400, "UTC"), 0, 10) + "T00:00:00Z"}
+          - window_end: ${text.substring(time.format(sys.now(), "UTC"), 0, 10) + "T00:00:00Z"}
+    - run_job:
+        try:
+          call: googleapis.run.v2.projects.locations.jobs.run
+          args:
+            name: projects/project-90394262-994e-4667-90d/locations/us-east5/jobs/mrr-production-ingest
+            body:
+              overrides:
+                containerOverrides:
+                  - args:
+                      - ${"--start=" + window_start}
+                      - ${"--end=" + window_end}
+            connector_params:
+              timeout: 1200
+          result: execution
+        except:
+          as: error
+          steps:
+            - log_failure:
+                call: sys.log
+                args:
+                  severity: ERROR
+                  text: ${"mrr_alert_type=workflow_failed workflow=mrr-daily-ingest error=" + json.encode_to_string(error)}
+            - fail:
+                raise: ${error}
+    - completed:
+        return: ${execution}
+    - log_test_failure:
+        call: sys.log
+        args:
+          severity: ERROR
+          text: mrr_alert_type=workflow_failed workflow=mrr-daily-ingest test_failure=true
+    - intentional_failure:
+        raise: Manual alert-path verification requested before Cloud Run invocation.

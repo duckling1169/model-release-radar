@@ -1,0 +1,7 @@
+title: MRR Workflow Runner
+description: Invoke the production Cloud Run Job with explicit window overrides and observe its operation.
+stage: GA
+includedPermissions:
+  - run.jobs.get
+  - run.jobs.runWithOverrides
+  - run.operations.get

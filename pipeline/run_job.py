@@ -6,18 +6,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import tempfile
 from datetime import UTC, datetime
-from pathlib import Path
 
 from google.cloud import bigquery
 from google.auth import default
 from google.auth.transport.requests import AuthorizedSession
 
-sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
-import fetch_sources  # noqa: E402
-import transform_silver  # noqa: E402
+import arxiv_normalize
+import sources
 
 PROJECT_ID = "project-90394262-994e-4667-90d"
 LOCATION = "US"
@@ -32,10 +29,10 @@ def now_z() -> str:
 
 
 def parse_window(start: str, end: str) -> tuple[datetime, datetime]:
-    parsed_start, parsed_end = fetch_sources.parse_utc(start), fetch_sources.parse_utc(end)
+    parsed_start, parsed_end = sources.parse_utc(start), sources.parse_utc(end)
     if parsed_start >= parsed_end:
         raise ValueError("--start must be earlier than --end")
-    fetch_sources.ensure_recent_window(fetch_sources.RunWindow(parsed_start, parsed_end), fetch_sources.utc_now())
+    sources.ensure_recent_window(sources.RunWindow(parsed_start, parsed_end), sources.utc_now())
     return parsed_start, parsed_end
 
 
@@ -101,7 +98,7 @@ def load_bronze(client: bigquery.Client, run_dir: Path) -> dict[str, object]:
 def normalize_arxiv(client: bigquery.Client, manifest: dict[str, object], run_dir: Path) -> None:
     run_id, processed_at = str(manifest["run_id"]), now_z()
     pages = bronze_rows(run_dir, run_id, "arxiv", processed_at)
-    rows = transform_silver.arxiv_rows(pages, processed_at)
+    rows = arxiv_normalize.arxiv_rows(pages, processed_at)
     existing_sql = f"SELECT source_id FROM `{PROJECT_ID}.{SILVER}.arxiv_paper_submissions` WHERE source_id IN UNNEST(@ids)"
     ids = [str(row["source_id"]) for row in rows]
     existing = {row.source_id for row in client.query(existing_sql, job_config=bigquery.QueryJobConfig(query_parameters=[bigquery.ArrayQueryParameter("ids", "STRING", ids)]), location=LOCATION).result()} if ids else set()
@@ -143,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     monthly_query_guard(client)
     with tempfile.TemporaryDirectory(prefix="mrr-") as directory:
         run_root = Path(directory) / "raw"
-        exit_code = fetch_sources.main(["--start", args.start, "--end", args.end, "--output-dir", str(run_root)])
+        exit_code = sources.main(["--start", args.start, "--end", args.end, "--output-dir", str(run_root)])
         run_dirs = list(run_root.iterdir())
         if len(run_dirs) != 1:
             raise RuntimeError("collector did not create exactly one run directory")
