@@ -1,4 +1,3 @@
-// M4 Hugging Face normalization.
 config {
   type: "operations",
   tags: ["m4"],

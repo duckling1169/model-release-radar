@@ -1,4 +1,3 @@
-// M4 duplicate-ID gate.
 config { type: "assertion", dependencies: ["huggingface_silver"] }
 
 SELECT source_id

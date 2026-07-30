@@ -1,4 +1,3 @@
-// M4 lineage gate.
 config { type: "assertion", dependencies: ["huggingface_silver"] }
 
 SELECT source_id FROM `project-90394262-994e-4667-90d.mrr_silver.huggingface_model_releases`
