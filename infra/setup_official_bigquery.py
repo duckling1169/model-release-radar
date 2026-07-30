@@ -7,7 +7,31 @@ never alters an existing table and never assigns a default expiration.
 
 from __future__ import annotations
 
-from m2_common import PROJECT_ID, bq_base, query, require_project, run
+import subprocess
+
+
+PROJECT_ID = "project-90394262-994e-4667-90d"
+LOCATION = "US"
+MAXIMUM_BYTES_BILLED = 1_073_741_824
+
+
+def run(command: list[str], *, capture_output: bool = False) -> str:
+    completed = subprocess.run(command, check=True, text=True, capture_output=capture_output)
+    return completed.stdout if capture_output else ""
+
+
+def require_project() -> None:
+    configured = run(["gcloud", "config", "get-value", "project"], capture_output=True).strip()
+    if configured != PROJECT_ID:
+        raise RuntimeError(f"configured project must be {PROJECT_ID}, found {configured or '(none)'}")
+
+
+def bq_base() -> list[str]:
+    return ["bq", f"--project_id={PROJECT_ID}", f"--location={LOCATION}"]
+
+
+def query(sql: str) -> None:
+    run(bq_base() + ["query", "--use_legacy_sql=false", f"--maximum_bytes_billed={MAXIMUM_BYTES_BILLED}", sql])
 
 
 BRONZE = "mrr_bronze"
