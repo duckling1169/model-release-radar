@@ -40,9 +40,13 @@ def parse_window(start: str, end: str) -> tuple[datetime, datetime]:
 
 
 def storage_guard(client: bigquery.Client) -> None:
-    sql = """SELECT COALESCE(SUM(active_logical_bytes), 0) AS bytes
-      FROM `region-us`.INFORMATION_SCHEMA.TABLE_STORAGE"""
-    used = int(next(iter(client.query(sql, location=LOCATION).result())).bytes)
+    # TABLE_STORAGE metadata requires a project setting whose history can take
+    # a day to initialize. The API exposes current logical table size now,
+    # without granting the collector any table-data read permission.
+    used = 0
+    for dataset in client.list_datasets(project=PROJECT_ID):
+        for table in client.list_tables(dataset.reference):
+            used += client.get_table(table.reference).num_bytes or 0
     if used >= MAX_STORAGE_BYTES:
         raise RuntimeError(f"storage guard: {used} bytes already meets 5 GiB limit")
 
