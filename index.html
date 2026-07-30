@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model Release Radar</title>
-<meta name="description" content="A daily list of new AI models and papers, with the numbers behind it shown.">
+<meta name="description" content="A daily list of new AI models and papers, with clear source counts.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -13,23 +13,23 @@
 <header class="topbar">
   <div class="brand"><div class="brand-mark">MR</div><div class="brand-name">Model Release Radar</div></div>
   <div class="chips"><span class="chip">BigQuery</span><span class="chip">Hugging Face</span><span class="chip">arXiv</span></div>
-  <div class="status"><span class="pulse-dot"></span><span id="live-status" class="status-pill">Loading latest run…</span><button id="theme-toggle" class="toggle-btn" type="button">● Dark</button></div>
+  <div class="status"><span class="pulse-dot"></span><span id="live-status" class="status-pill">Loading the latest update…</span><button id="theme-toggle" class="toggle-btn" type="button">● Dark</button></div>
 </header>
 
 <section class="hero">
   <div class="eyebrow">NEW AI MODELS AND PAPERS, EACH DAY</div>
-  <h1>A daily list of new AI models and papers, with the numbers behind it shown.</h1>
-  <p class="lede">Pulls new public Hugging Face model repositories and first-submission AI papers from arXiv into BigQuery. Every row is counted from source capture through the displayed feed.</p>
+  <h1>New AI models and papers, collected each day.</h1>
+  <p class="lede">Track new public Hugging Face model repositories and newly submitted AI papers from arXiv. Source counts show how each update made it to this list.</p>
   <div class="stat-row">
     <div class="stat"><div id="source-count" class="stat-num">—</div><div class="stat-label">sources</div></div>
     <div class="stat"><div id="item-count" class="stat-num">—</div><div class="stat-label">items in latest run</div></div>
-    <div class="stat stat-last"><div id="reconciled-count" class="stat-num">—</div><div class="stat-label">raw → Gold items</div></div>
+    <div class="stat stat-last"><div id="reconciled-count" class="stat-num">—</div><div class="stat-label">captured → listed</div></div>
   </div>
 </section>
 
 <section class="radar">
   <div class="section-title">Today's radar</div>
-  <div id="radar-subtitle" class="section-sub">Loading the latest fully successful run…</div>
+  <div id="radar-subtitle" class="section-sub">Loading the latest complete update…</div>
   <div id="filter-bar" class="filter-bar" aria-label="Filter today's radar">
     <div class="filter-group">
       <span class="filter-label">Source</span>
@@ -40,9 +40,9 @@
       </div>
     </div>
     <div class="filter-group filter-tags-group">
-      <span class="filter-label">Classifications</span>
-      <div id="tag-filters" class="filter-controls" role="group" aria-label="Filter by classification">
-        <button class="filter-chip filter-empty" type="button" disabled>Classifications will appear as releases are enriched</button>
+      <span class="filter-label">Tags</span>
+      <div id="tag-filters" class="filter-controls" role="group" aria-label="Filter by tag">
+        <button class="filter-chip filter-empty" type="button" disabled>Tags appear after a release is categorized</button>
       </div>
     </div>
     <div id="filter-count" class="filter-count" aria-live="polite">Loading releases…</div>
@@ -51,16 +51,16 @@
 </section>
 
 <section class="transparency">
-  <div class="section-title">Pipeline transparency</div>
-  <div class="section-sub">Every row gets counted from raw to modeled, so nothing goes missing quietly.</div>
+  <div class="section-title">Where the numbers come from</div>
+  <div class="section-sub">Compare captured records with the items shown here for each source.</div>
   <div class="table-card">
-    <div class="table-row table-head"><div>SOURCE</div><div>RAW ROWS (24H)</div><div>FIRST-SEEN</div><div>GOLD ITEMS</div><div class="align-right">LAST RUN</div></div>
+    <div class="table-row table-head"><div>SOURCE</div><div>CAPTURED (24H)</div><div>NEW</div><div>LISTED</div><div class="align-right">UPDATED</div></div>
     <div id="metrics-rows"><div class="table-row table-row-last"><div class="muted">Loading metrics…</div></div></div>
   </div>
-  <div id="table-footnote" class="table-footnote">Waiting for the latest fully successful run.</div>
+  <div id="table-footnote" class="table-footnote">Waiting for the latest complete update.</div>
   <div class="architecture">
-    <div class="section-title">Production architecture, at a glance</div>
-    <div class="section-sub">A small, auditable daily pipeline with a read-only public view.</div>
+    <div class="section-title">How the daily update works</div>
+    <div class="section-sub">A small daily process with a public, read-only view.</div>
     <div class="architecture-diagram" aria-label="Production data and control flow diagram">
       <span class="diagram-lane-label">Control path</span>
       <div class="architecture-lane architecture-lane-core">

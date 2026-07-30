@@ -26,13 +26,13 @@
   toggleBtn.addEventListener('click', () => { const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; applyTheme(next); localStorage.setItem(STORAGE_KEY, next); });
 
   function showUnavailable() {
-    setText('live-status', 'Live data unavailable');
-    setText('radar-subtitle', 'The latest live data could not be loaded. Please try again shortly.');
+    setText('live-status', 'Update unavailable');
+    setText('radar-subtitle', 'We couldn’t load the latest update. Please try again in a moment.');
     ['source-count', 'item-count', 'reconciled-count'].forEach((id) => setText(id, '—'));
-    const grid = document.getElementById('radar-grid'); clear(grid); grid.append(element('p', 'empty-state', 'Latest live data is unavailable.'));
+    const grid = document.getElementById('radar-grid'); clear(grid); grid.append(element('p', 'empty-state', 'No releases are available right now.'));
     setText('filter-count', 'Releases unavailable');
-    const rows = document.getElementById('metrics-rows'); clear(rows); rows.append(element('div', 'table-row table-row-last muted', 'Live metrics are unavailable.'));
-    setText('table-footnote', 'No partial run is shown when the latest complete snapshot is unavailable.');
+    const rows = document.getElementById('metrics-rows'); clear(rows); rows.append(element('div', 'table-row table-row-last muted', 'Source counts are unavailable.'));
+    setText('table-footnote', 'Only complete updates appear here; the next one will show when it is ready.');
   }
   const itemTags = MrrFilters.itemTags;
   function updateSelected(button, selected) {
@@ -45,7 +45,7 @@
     clear(tagFilters);
     if (!tags.length) {
       filters.tags.clear();
-      const unavailable = element('button', 'filter-chip filter-empty', 'Classifications will appear as releases are enriched');
+      const unavailable = element('button', 'filter-chip filter-empty', 'Tags appear after a release is categorized');
       unavailable.type = 'button'; unavailable.disabled = true;
       tagFilters.append(unavailable);
       return;
@@ -72,7 +72,7 @@
     setText('filter-count', `${visible.length} ${visible.length === 1 ? 'release' : 'releases'}`);
     const grid = document.getElementById('radar-grid'); clear(grid);
     if (visible.length) visible.forEach((item) => grid.append(renderCard(item)));
-    else grid.append(element('p', 'empty-state', 'No releases match these filters. Try another source or classification.'));
+    else grid.append(element('p', 'empty-state', 'No releases match these filters. Try another source or tag.'));
   }
   document.getElementById('source-filters').addEventListener('click', (event) => {
     const button = event.target.closest('button[data-source]');
@@ -119,13 +119,13 @@
     setText('source-count', String(metrics.length)); setText('item-count', formatNumber(displayedTotal)); setText('reconciled-count', `${formatNumber(rawTotal)} → ${formatNumber(displayedTotal)}`);
   }
   function renderSnapshot(snapshot) {
-    setText('live-status', `Latest complete run · ${relativeTime(snapshot.run.completed_at)}`);
-    setText('radar-subtitle', `Newest items from the run ending ${new Date(snapshot.run.window_end).toLocaleString()}.`);
+    setText('live-status', `Latest update · ${relativeTime(snapshot.run.completed_at)}`);
+    setText('radar-subtitle', `New items from the update ending ${new Date(snapshot.run.window_end).toLocaleString()}.`);
     window.radarItems = snapshot.items;
     renderTagFilters(snapshot.items);
     renderFilteredItems(snapshot.items);
     renderMetrics(snapshot.metrics, snapshot.run.completed_at);
-    setText('table-footnote', `Run ${snapshot.run.id} completed ${relativeTime(snapshot.run.completed_at)}. ${snapshot.metrics.length} source metrics shown; no partial run is mixed into this view.`);
+    setText('table-footnote', `Update ${snapshot.run.id} finished ${relativeTime(snapshot.run.completed_at)}. Showing ${snapshot.metrics.length} sources; partial updates stay out of this view.`);
   }
   fetch('/api/radar').then((response) => response.ok ? response.json() : Promise.reject(new Error(`Radar API ${response.status}`))).then((snapshot) => snapshot.status === 'ok' ? renderSnapshot(snapshot) : showUnavailable()).catch(showUnavailable);
 })();
