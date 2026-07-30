@@ -8,7 +8,9 @@ main:
           - window_start: ${text.substring(time.format(sys.now() - 86400, "UTC"), 0, 10) + "T00:00:00Z"}
     - build_query:
         assign:
-          - sql: ${"SELECT COUNT(*) AS valid_run_count FROM (SELECT run_id FROM `project-90394262-994e-4667-90d.mrr_gold.daily_source_metrics` WHERE window_start = TIMESTAMP('" + window_start + "') GROUP BY run_id HAVING COUNT(DISTINCT source) = 2 AND COUNTIF(source_status = 'succeeded') = 2)"}
+          - gold_sql: ${"SELECT COUNT(*) FROM (SELECT run_id FROM `project-90394262-994e-4667-90d.mrr_gold.daily_source_metrics` WHERE window_start = TIMESTAMP('" + window_start + "') GROUP BY run_id HAVING COUNT(DISTINCT source) = 2 AND COUNTIF(source_status = 'succeeded') = 2)"}
+          - enrichment_sql: ${"SELECT IF(COUNT(*) = 3 AND COUNTIF(status = 'failed') = 3, 3, 0) FROM (SELECT status FROM `project-90394262-994e-4667-90d.mrr_enrichment.enrichment_runs` ORDER BY finished_at DESC LIMIT 3)"}
+          - sql: ${"SELECT (" + gold_sql + ") AS valid_run_count, (" + enrichment_sql + ") AS consecutive_enrichment_failures"}
     - query_gold:
         try:
           call: http.post
@@ -37,7 +39,7 @@ main:
     - check_result:
         switch:
           - condition: ${int(query_result.body.rows[0].f[0].v) > 0}
-            next: healthy
+            next: check_enrichment
     - log_missing_gold:
         call: sys.log
         args:
@@ -45,5 +47,16 @@ main:
           text: ${"mrr_alert_type=missing_gold workflow=mrr-daily-health window_start=" + window_start}
     - fail_missing_gold:
         raise: ${"No complete two-source official Gold run for " + window_start}
+    - check_enrichment:
+        switch:
+          - condition: ${int(query_result.body.rows[0].f[1].v) == 3}
+            next: log_enrichment_alert
     - healthy:
+        return: ${query_result.body.rows[0].f[0].v}
+    - log_enrichment_alert:
+        call: sys.log
+        args:
+          severity: ERROR
+          text: mrr_alert_type=enrichment_consecutive_failure workflow=mrr-daily-health consecutive_failures=3
+    - enrichment_alerted:
         return: ${query_result.body.rows[0].f[0].v}

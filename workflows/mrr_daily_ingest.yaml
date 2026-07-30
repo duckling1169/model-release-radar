@@ -38,6 +38,24 @@ main:
                   text: ${"mrr_alert_type=workflow_failed workflow=mrr-daily-ingest error=" + json.encode_to_string(error)}
             - fail:
                 raise: ${error}
+    # Enrichment is deliberately downstream of complete Gold and non-blocking:
+    # no Gemini failure, quota event, or backlog can invalidate source capture.
+    - run_enrichment:
+        try:
+          call: googleapis.run.v2.projects.locations.jobs.run
+          args:
+            name: projects/project-90394262-994e-4667-90d/locations/us-east5/jobs/mrr-production-enrich
+            connector_params:
+              timeout: 1200
+          result: enrichment_execution
+        except:
+          as: error
+          steps:
+            - log_enrichment_failure:
+                call: sys.log
+                args:
+                  severity: WARNING
+                  text: ${"mrr_enrichment_job_failed workflow=mrr-daily-ingest error=" + json.encode_to_string(error)}
     - completed:
         return: ${execution}
     - log_test_failure:

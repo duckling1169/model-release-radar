@@ -1,6 +1,7 @@
 const PROJECT_ID = 'project-90394262-994e-4667-90d';
 const PROJECT_NUMBER = '334011635171';
 const GOLD_DATASET = 'mrr_gold';
+const ENRICHMENT_DATASET = 'mrr_enrichment';
 const EXPECTED_SOURCES = 2;
 const MAXIMUM_BYTES_BILLED = '1073741824';
 
@@ -71,11 +72,21 @@ const LATEST_RUN_SQL = `SELECT run_id,
 const METRICS_SQL = `SELECT source, raw_page_count, raw_response_record_count, raw_window_record_count, silver_parsed_count, silver_inserted_count, silver_duplicate_count, silver_qualified_count, gold_item_count, source_status,
     FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', processed_at, 'UTC') AS processed_at
   FROM \`${PROJECT_ID}.${GOLD_DATASET}.daily_source_metrics\` WHERE run_id = @run_id ORDER BY source`;
-const ITEMS_SQL = `SELECT source, source_id,
+const ITEMS_SQL = `WITH latest_enrichment AS (
+    SELECT source, source_id, tags, explanation
+    FROM \`${PROJECT_ID}.${ENRICHMENT_DATASET}.item_enrichments\`
+    WHERE status = 'succeeded'
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY source, source_id ORDER BY created_at DESC, enrichment_id DESC) = 1
+  )
+  SELECT item.source, item.source_id,
     FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', source_published_at, 'UTC') AS source_published_at,
-    title, summary, canonical_url, author_or_org,
-    FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', observed_at, 'UTC') AS observed_at
-  FROM \`${PROJECT_ID}.${GOLD_DATASET}.radar_items\` WHERE bronze_run_id = @run_id ORDER BY source_published_at DESC, source, source_id LIMIT 50`;
+    item.title, item.summary, item.canonical_url, item.author_or_org,
+    FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', item.observed_at, 'UTC') AS observed_at,
+    IF(enrichment.source IS NULL, NULL, STRUCT(enrichment.tags AS tags, enrichment.explanation AS explanation)) AS enrichment
+  FROM \`${PROJECT_ID}.${GOLD_DATASET}.radar_items\` item
+  LEFT JOIN latest_enrichment enrichment USING (source, source_id)
+  WHERE item.bronze_run_id = @run_id
+  ORDER BY item.source_published_at DESC, item.source, item.source_id LIMIT 50`;
 
 function runParameter(runId) {
   return [{ name: 'run_id', parameterType: { type: 'STRING' }, parameterValue: { value: runId } }];

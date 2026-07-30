@@ -246,14 +246,46 @@ a { color: inherit; }
 .badge-muted { background: var(--chip-bg); color: var(--text-muted); }
 
 .card-title {
+  display: block;
   font: 600 15px 'IBM Plex Sans', sans-serif;
   margin-bottom: 6px;
+  text-decoration: none;
 }
+
+.card-title:hover { text-decoration: underline; }
+.card-author { margin-top: -8px; font-size: 11px; }
+.empty-state { color: var(--text-muted); grid-column: 1 / -1; }
 
 .card-desc {
   font: 400 13px/1.5 'IBM Plex Sans', sans-serif;
   color: var(--text-muted);
   margin-bottom: 14px;
+}
+
+.enrichment-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 11px;
+}
+
+.enrichment-tag {
+  background: var(--indigo-bg);
+  color: var(--indigo);
+  font: 600 10px 'IBM Plex Mono', monospace;
+  padding: 3px 6px;
+}
+
+.enrichment-why {
+  color: var(--text-secondary);
+  font: 400 12px/1.5 'IBM Plex Sans', sans-serif;
+  margin: 0 0 13px;
+}
+
+.enrichment-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-right: 5px;
 }
 
 .card-time {

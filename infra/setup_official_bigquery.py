@@ -37,6 +37,7 @@ def query(sql: str) -> None:
 BRONZE = "mrr_bronze"
 SILVER = "mrr_silver"
 GOLD = "mrr_gold"
+ENRICHMENT = "mrr_enrichment"
 ASSERTIONS = "mrr_dataform_assertions"
 
 
@@ -49,7 +50,7 @@ def create_dataset(dataset: str) -> None:
 
 def main() -> int:
     require_project()
-    for dataset in (BRONZE, SILVER, GOLD, ASSERTIONS):
+    for dataset in (BRONZE, SILVER, GOLD, ENRICHMENT, ASSERTIONS):
         create_dataset(dataset)
     schema = {
         f"{BRONZE}.fetch_runs": "run_id STRING NOT NULL, source STRING NOT NULL, overall_status STRING NOT NULL, source_status STRING NOT NULL, window_start TIMESTAMP NOT NULL, window_end TIMESTAMP NOT NULL, run_started_at TIMESTAMP NOT NULL, run_finished_at TIMESTAMP NOT NULL, page_count INT64 NOT NULL, response_record_count INT64, window_record_count INT64, error STRING, manifest_json STRING NOT NULL, loaded_at TIMESTAMP NOT NULL",
@@ -60,12 +61,14 @@ def main() -> int:
         f"{SILVER}.transform_runs": "run_id STRING NOT NULL, source STRING NOT NULL, parsed_count INT64 NOT NULL, inserted_count INT64 NOT NULL, duplicate_count INT64 NOT NULL, qualified_count INT64 NOT NULL, status STRING NOT NULL, processed_at TIMESTAMP NOT NULL, transform_version STRING NOT NULL",
         f"{GOLD}.radar_items": "source STRING NOT NULL, source_id STRING NOT NULL, radar_date DATE NOT NULL, source_published_at TIMESTAMP NOT NULL, title STRING NOT NULL, summary STRING, canonical_url STRING NOT NULL, author_or_org STRING, source_metadata STRING NOT NULL, observed_at TIMESTAMP NOT NULL, bronze_run_id STRING NOT NULL, bronze_page_number INT64 NOT NULL, source_record_index INT64 NOT NULL, processed_at TIMESTAMP NOT NULL, transform_version STRING NOT NULL",
         f"{GOLD}.daily_source_metrics": "metric_date DATE NOT NULL, run_id STRING NOT NULL, source STRING NOT NULL, window_start TIMESTAMP NOT NULL, window_end TIMESTAMP NOT NULL, source_status STRING NOT NULL, raw_page_count INT64 NOT NULL, raw_response_record_count INT64, raw_window_record_count INT64, silver_parsed_count INT64 NOT NULL, silver_inserted_count INT64 NOT NULL, silver_duplicate_count INT64 NOT NULL, silver_qualified_count INT64 NOT NULL, gold_item_count INT64 NOT NULL, processed_at TIMESTAMP NOT NULL, transform_version STRING NOT NULL",
+        f"{ENRICHMENT}.item_enrichments": "enrichment_id STRING NOT NULL, enrichment_run_id STRING NOT NULL, source STRING NOT NULL, source_id STRING NOT NULL, gold_run_id STRING NOT NULL, model_id STRING NOT NULL, prompt_version STRING NOT NULL, input_hash STRING NOT NULL, tags ARRAY<STRING>, explanation STRING, status STRING NOT NULL, failure_reason STRING, attempt_number INT64 NOT NULL, source_published_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL",
+        f"{ENRICHMENT}.enrichment_runs": "enrichment_run_id STRING NOT NULL, gold_run_id STRING, model_id STRING NOT NULL, prompt_version STRING NOT NULL, started_at TIMESTAMP NOT NULL, finished_at TIMESTAMP NOT NULL, daily_request_cap INT64 NOT NULL, newest_candidate_count INT64 NOT NULL, backlog_candidate_count INT64 NOT NULL, attempted_count INT64 NOT NULL, succeeded_count INT64 NOT NULL, insufficient_count INT64 NOT NULL, failed_count INT64 NOT NULL, quota_exhausted BOOL NOT NULL, status STRING NOT NULL, error STRING",
     }
     for table, fields in schema.items():
-        partition = "run_started_at" if table.endswith("fetch_runs") else "fetched_at" if table.endswith("_raw") else "processed_at" if table.endswith("transform_runs") else "source_published_at" if ".mrr_silver" in f".{table}" else "radar_date" if table.endswith("radar_items") else "metric_date" if table.endswith("daily_source_metrics") else "processed_at"
+        partition = "run_started_at" if table.endswith("fetch_runs") else "fetched_at" if table.endswith("_raw") else "created_at" if table.endswith("item_enrichments") else "started_at" if table.endswith("enrichment_runs") else "processed_at" if table.endswith("transform_runs") else "source_published_at" if ".mrr_silver" in f".{table}" else "radar_date" if table.endswith("radar_items") else "metric_date" if table.endswith("daily_source_metrics") else "processed_at"
         expression = partition if partition in {"radar_date", "metric_date"} else f"DATE({partition})"
         query(f"CREATE TABLE IF NOT EXISTS `{PROJECT_ID}.{table}` ({fields}) PARTITION BY {expression}")
-    print(f"ready: {BRONZE}, {SILVER}, {GOLD}, {ASSERTIONS} in US")
+    print(f"ready: {BRONZE}, {SILVER}, {GOLD}, {ENRICHMENT}, {ASSERTIONS} in US")
     return 0
 
 
