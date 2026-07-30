@@ -382,10 +382,15 @@ a { color: inherit; }
 .architecture-lane-core { justify-content: center; }
 .architecture-lane-data { justify-content: center; }
 .diagram-connector { color: var(--text-muted); font: 400 18px 'IBM Plex Sans', sans-serif; line-height: 12px; text-align: center; }
-.architecture-branches { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.diagram-lane-label { color: var(--text-muted); font: 600 9px 'IBM Plex Mono', monospace; letter-spacing: .6px; text-transform: uppercase; }
+.diagram-note { color: var(--text-muted); font: 400 10.5px/1.35 'IBM Plex Sans', sans-serif; margin-top: -5px; text-align: center; }
+.architecture-branches { display: grid; gap: 14px; }
 .architecture-branch { border-top: 1px solid var(--border-soft); padding-top: 13px; }
 .branch-label { display: block; color: var(--text-muted); font: 600 10px 'IBM Plex Mono', monospace; margin-bottom: 8px; text-transform: uppercase; }
 .branch-flow { justify-content: center; }
+.branch-flow-health .diagram-node { flex-basis: 135px; }
+.diagram-dependency { align-items: center; color: var(--text-muted); display: flex; font: 500 10px 'IBM Plex Mono', monospace; gap: 8px; justify-content: center; margin-top: 8px; }
+.diagram-dependency .diagram-node { flex-basis: 150px; min-height: 58px; }
 .architecture-access { border-top: 1px solid var(--border-soft); justify-content: center; padding-top: 14px; }
 
 .diagram-node {
@@ -416,7 +421,6 @@ a { color: inherit; }
 
 @media (max-width: 900px) {
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .architecture-branches { grid-template-columns: 1fr; }
   .architecture-callouts { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -428,9 +432,10 @@ a { color: inherit; }
   .filter-bar { align-items: stretch; gap: 14px; }
   .filter-count { margin-left: 0; padding-bottom: 0; }
   .architecture-diagram { padding: 14px; }
-  .architecture-lane, .architecture-access, .branch-flow { align-items: stretch; flex-direction: column; }
+  .architecture-lane, .architecture-access, .branch-flow, .diagram-dependency { align-items: stretch; flex-direction: column; }
   .architecture-lane-core, .architecture-lane-data, .branch-flow, .architecture-access { justify-content: flex-start; }
   .diagram-node { flex-basis: auto; min-height: 60px; }
   .diagram-arrow { justify-content: center; min-height: 16px; transform: rotate(90deg); }
+  .diagram-dependency { margin-top: 12px; }
   .architecture-callouts { grid-template-columns: 1fr; }
 }
