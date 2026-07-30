@@ -25,6 +25,11 @@ class M4JobContractTests(unittest.TestCase):
         self.assertLess(load_index, failure_index)
         self.assertLess(failure_index, call_index)
 
+    def test_job_keeps_its_temporary_capture_path_dependency(self) -> None:
+        source = JOB.read_text(encoding="utf-8")
+        self.assertIn("from pathlib import Path", source)
+        self.assertIn('Path(directory) / "raw"', source)
+
 
 if __name__ == "__main__":
     unittest.main()

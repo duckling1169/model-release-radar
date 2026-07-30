@@ -8,6 +8,7 @@ import json
 import os
 import tempfile
 from datetime import UTC, datetime
+from pathlib import Path
 
 from google.cloud import bigquery
 from google.auth import default
