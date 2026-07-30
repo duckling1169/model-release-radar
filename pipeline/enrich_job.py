@@ -48,6 +48,17 @@ def timestamp_z(value: object) -> str:
     return str(value)
 
 
+def json_safe(value: object) -> object:
+    """Convert BigQuery-native values to JSON values before streaming a row."""
+    if isinstance(value, datetime):
+        return timestamp_z(value)
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    return value
+
+
 def bounded(value: object, limit: int) -> str:
     """Normalize public source text and bound the request payload."""
     return " ".join(str(value or "").split())[:limit]
@@ -217,7 +228,9 @@ def candidates(client: bigquery.Client, gold_run_id: str, cap: int) -> tuple[lis
 
 
 def load_row(client: bigquery.Client, table: str, row: dict[str, object]) -> None:
-    errors = client.insert_rows_json(f"{PROJECT_ID}.{ENRICHMENT}.{table}", [row])
+    # The BigQuery client serializes this payload itself. Candidate rows can
+    # contain native datetime values, which must not reach that JSON boundary.
+    errors = client.insert_rows_json(f"{PROJECT_ID}.{ENRICHMENT}.{table}", [json_safe(row)])
     if errors:
         raise RuntimeError(f"BigQuery insert into {table} failed: {errors}")
 

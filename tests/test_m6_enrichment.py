@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,6 +12,14 @@ JOB = ROOT / "pipeline" / "enrich_job.py"
 INGEST = (ROOT / "workflows" / "mrr_daily_ingest.yaml").read_text(encoding="utf-8")
 HEALTH = (ROOT / "workflows" / "mrr_daily_health.yaml").read_text(encoding="utf-8")
 SCHEMA = (ROOT / "infra" / "setup_official_bigquery.py").read_text(encoding="utf-8")
+
+
+def load_job_module():
+    spec = importlib.util.spec_from_file_location("enrich_job", JOB)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class M6EnrichmentContractTests(unittest.TestCase):
@@ -35,6 +44,15 @@ class M6EnrichmentContractTests(unittest.TestCase):
         self.assertIn("enrichment_runs", SCHEMA)
         self.assertIn("CREATE TABLE IF NOT EXISTS", SCHEMA)
         self.assertNotIn("DELETE FROM", JOB.read_text(encoding="utf-8"))
+
+    def test_streaming_rows_convert_native_datetimes_to_json_values(self) -> None:
+        job = load_job_module()
+        native_time = datetime(2026, 7, 30, 16, 31, 16, tzinfo=UTC)
+        payload = {"created_at": native_time, "nested": {"times": [native_time]}}
+        self.assertEqual(job.json_safe(payload), {
+            "created_at": "2026-07-30T16:31:16.000000Z",
+            "nested": {"times": ["2026-07-30T16:31:16.000000Z"]},
+        })
 
     def test_workflow_isolates_enrichment_and_alerts_only_after_three_failures(self) -> None:
         self.assertIn("mrr-production-enrich", INGEST)
