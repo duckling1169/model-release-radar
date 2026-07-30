@@ -56,15 +56,17 @@
   }
   function renderMetrics(metrics, completedAt) {
     const rows = document.getElementById('metrics-rows'); clear(rows);
-    let rawTotal = 0; let modeledTotal = 0; let displayedTotal = 0;
+    let rawTotal = 0; let displayedTotal = 0;
     metrics.forEach((metric, index) => {
-      const raw = Number(metric.raw_window_record_count || 0); const modeled = Number(metric.silver_parsed_count || 0);
-      rawTotal += raw; modeledTotal += modeled; displayedTotal += Number(metric.gold_item_count || 0);
+      const raw = Number(metric.raw_window_record_count || 0);
+      const firstSeen = Number(metric.silver_inserted_count || 0);
+      const goldItems = Number(metric.gold_item_count || 0);
+      rawTotal += raw; displayedTotal += goldItems;
       const row = element('div', `table-row ${index === metrics.length - 1 ? 'table-row-last' : ''}`);
-      row.append(element('div', '', sourceNames[metric.source] || metric.source), element('div', 'mono', formatNumber(raw)), element('div', 'mono', formatNumber(modeled)), element('div', `mono ${metric.source === 'arxiv' ? 'match-indigo' : 'match-teal'}`, raw ? `${((modeled / raw) * 100).toFixed(1)}%` : '—'), element('div', 'align-right mono muted', relativeTime(completedAt)));
+      row.append(element('div', '', sourceNames[metric.source] || metric.source), element('div', 'mono', formatNumber(raw)), element('div', 'mono', formatNumber(firstSeen)), element('div', `mono ${metric.source === 'arxiv' ? 'match-indigo' : 'match-teal'}`, formatNumber(goldItems)), element('div', 'align-right mono muted', relativeTime(completedAt)));
       rows.append(row);
     });
-    setText('source-count', String(metrics.length)); setText('item-count', formatNumber(displayedTotal)); setText('reconciled-count', `${formatNumber(rawTotal)} → ${formatNumber(modeledTotal)}`);
+    setText('source-count', String(metrics.length)); setText('item-count', formatNumber(displayedTotal)); setText('reconciled-count', `${formatNumber(rawTotal)} → ${formatNumber(displayedTotal)}`);
   }
   function renderSnapshot(snapshot) {
     setText('live-status', `Latest complete run · ${relativeTime(snapshot.run.completed_at)}`);
