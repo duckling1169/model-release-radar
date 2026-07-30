@@ -1,4 +1,4 @@
-# Cloud Scheduler starts this workflow with `{}` at 01:00 UTC.
+# Cloud Scheduler starts this workflow with `{}` at 08:00 UTC.
 # It proves that the prior UTC day's explicit window reached a valid two-source Gold snapshot.
 main:
   params: [input]

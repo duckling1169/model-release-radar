@@ -8,7 +8,7 @@ This repo contains the Vercel-hosted dashboard and its same-origin read API. The
 
 - **Sources:** Hugging Face (new public model repositories) and arXiv (first submissions in `cs.AI`, `cs.CL`, and `cs.LG`)
 - **Storage/transform:** BigQuery Bronze (verbatim source capture) → Silver (source-specific normalization) → Gold (materialized dashboard data and metrics)
-- **Production operation:** Cloud Scheduler starts a Workflow daily at 00:20 UTC; it invokes Cloud Run with the preceding completed UTC day, then Dataform makes Hugging Face Silver and Gold. A second Workflow verifies the complete two-source Gold snapshot at 01:00 UTC.
+- **Production operation:** Cloud Scheduler starts a Workflow daily at 07:20 UTC, after Gemini's midnight-Pacific free-tier reset; it invokes Cloud Run with the preceding completed UTC day, then Dataform makes Hugging Face Silver and Gold. A second Workflow verifies the complete two-source Gold snapshot at 08:00 UTC.
 - **Optional context:** a separate, bounded Gemini job adds controlled tags and a short source-grounded explanation after a complete Gold snapshot; it never ranks, filters, or delays the feed
 - **Dashboard:** Vercel serves the browser UI plus a short-lived-credential, read-only `/api/radar` adapter over Gold; Cloud Run remains a later production replacement behind the same browser contract
 

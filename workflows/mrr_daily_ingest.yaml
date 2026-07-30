@@ -1,4 +1,4 @@
-# Cloud Scheduler starts this workflow with `{"test_failure": false}` at 00:20 UTC.
+# Cloud Scheduler starts this workflow with `{"test_failure": false}` at 07:20 UTC.
 # `test_failure: true` is accepted only for the one-time alert-path verification.
 main:
   params: [input]
