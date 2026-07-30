@@ -3,6 +3,7 @@
   const toggleBtn = document.getElementById('theme-toggle');
   const STORAGE_KEY = 'mrr-theme';
   const sourceNames = { huggingface: 'Hugging Face', arxiv: 'arXiv' };
+  const filters = { source: 'all', tags: new Set() };
   const systemPrefersDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
   const setText = (id, value) => { document.getElementById(id).textContent = value; };
   const formatNumber = (value) => new Intl.NumberFormat().format(Number(value || 0));
@@ -29,9 +30,57 @@
     setText('radar-subtitle', 'The latest live data could not be loaded. Please try again shortly.');
     ['source-count', 'item-count', 'reconciled-count'].forEach((id) => setText(id, '—'));
     const grid = document.getElementById('radar-grid'); clear(grid); grid.append(element('p', 'empty-state', 'Latest live data is unavailable.'));
+    setText('filter-count', 'Releases unavailable');
     const rows = document.getElementById('metrics-rows'); clear(rows); rows.append(element('div', 'table-row table-row-last muted', 'Live metrics are unavailable.'));
     setText('table-footnote', 'No partial run is shown when the latest complete snapshot is unavailable.');
   }
+  const itemTags = MrrFilters.itemTags;
+  function updateSelected(button, selected) {
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  }
+  function renderTagFilters(items) {
+    const tagFilters = document.getElementById('tag-filters');
+    const tags = MrrFilters.availableTags(items);
+    clear(tagFilters);
+    if (!tags.length) {
+      filters.tags.clear();
+      const unavailable = element('button', 'filter-chip filter-empty', 'Classifications will appear as releases are enriched');
+      unavailable.type = 'button'; unavailable.disabled = true;
+      tagFilters.append(unavailable);
+      return;
+    }
+    filters.tags.forEach((tag) => { if (!tags.includes(tag)) filters.tags.delete(tag); });
+    tags.forEach((tag) => {
+      const button = element('button', `filter-chip ${filters.tags.has(tag) ? 'is-selected' : ''}`, tag);
+      button.type = 'button';
+      button.dataset.tag = tag;
+      button.setAttribute('aria-pressed', String(filters.tags.has(tag)));
+      button.addEventListener('click', () => {
+        if (filters.tags.has(tag)) filters.tags.delete(tag); else filters.tags.add(tag);
+        updateSelected(button, filters.tags.has(tag));
+        renderFilteredItems(items);
+      });
+      tagFilters.append(button);
+    });
+  }
+  function filteredItems(items) {
+    return MrrFilters.filterItems(items, filters.source, filters.tags);
+  }
+  function renderFilteredItems(items) {
+    const visible = filteredItems(items);
+    setText('filter-count', `${visible.length} ${visible.length === 1 ? 'release' : 'releases'}`);
+    const grid = document.getElementById('radar-grid'); clear(grid);
+    if (visible.length) visible.forEach((item) => grid.append(renderCard(item)));
+    else grid.append(element('p', 'empty-state', 'No releases match these filters. Try another source or classification.'));
+  }
+  document.getElementById('source-filters').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-source]');
+    if (!button) return;
+    filters.source = button.dataset.source;
+    document.querySelectorAll('#source-filters button').forEach((control) => updateSelected(control, control === button));
+    if (window.radarItems) renderFilteredItems(window.radarItems);
+  });
   function renderCard(item) {
     const card = element('article', `card ${item.source === 'arxiv' ? 'card-teal' : 'card-indigo'}`);
     const top = element('div', 'card-top'); top.append(element('span', 'card-source', sourceNames[item.source] || item.source));
@@ -40,9 +89,10 @@
     if (item.summary) card.append(element('div', 'card-desc', item.summary));
     if (item.author_or_org) card.append(element('div', 'card-desc card-author', item.author_or_org));
     if (item.enrichment) {
-      if (Array.isArray(item.enrichment.tags) && item.enrichment.tags.length) {
+      const tagsForItem = itemTags(item);
+      if (tagsForItem.length) {
         const tags = element('div', 'enrichment-tags');
-        item.enrichment.tags.forEach((tag) => tags.append(element('span', 'enrichment-tag', tag)));
+        tagsForItem.forEach((tag) => tags.append(element('span', 'enrichment-tag', tag)));
         card.append(tags);
       }
       if (item.enrichment.explanation) {
@@ -71,8 +121,9 @@
   function renderSnapshot(snapshot) {
     setText('live-status', `Latest complete run · ${relativeTime(snapshot.run.completed_at)}`);
     setText('radar-subtitle', `Newest items from the run ending ${new Date(snapshot.run.window_end).toLocaleString()}.`);
-    const grid = document.getElementById('radar-grid'); clear(grid);
-    if (snapshot.items.length) snapshot.items.forEach((item) => grid.append(renderCard(item))); else grid.append(element('p', 'empty-state', 'No items qualified for display in the latest complete run.'));
+    window.radarItems = snapshot.items;
+    renderTagFilters(snapshot.items);
+    renderFilteredItems(snapshot.items);
     renderMetrics(snapshot.metrics, snapshot.run.completed_at);
     setText('table-footnote', `Run ${snapshot.run.id} completed ${relativeTime(snapshot.run.completed_at)}. ${snapshot.metrics.length} source metrics shown; no partial run is mixed into this view.`);
   }

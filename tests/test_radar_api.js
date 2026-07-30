@@ -28,6 +28,7 @@ test('builds a snapshot from the newest complete run only', async () => {
   assert.equal(snapshot.items[0].source_id, '1234.5678');
   assert.match(radar.ITEMS_SQL, /mrr_enrichment\.item_enrichments/);
   assert.match(radar.ITEMS_SQL, /LEFT JOIN latest_enrichment/);
+  assert.doesNotMatch(radar.ITEMS_SQL, /model_id|prompt_version|input_hash|failure_reason/i);
   assert.deepEqual(calls[1].parameters, radar.runParameter('complete-run'));
   assert.deepEqual(calls[2].parameters, radar.runParameter('complete-run'));
 });

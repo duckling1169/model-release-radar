@@ -9,7 +9,7 @@ A dashboard showing daily AI model releases and first-submission AI papers. Curr
 | Component | Responsibility | Depends on |
 |---|---|---|
 | `index.html` / `styles.css` / `script.js` | Dashboard UI, live snapshot rendering, unavailable state, light/dark theme | Same-origin `/api/radar` |
-| `api/radar.js` | Cached, bounded dashboard snapshot adapter | Vercel OIDC, official BigQuery Gold and optional enrichment |
+| `api/radar.js` | Cached, bounded dashboard snapshot adapter | Vercel OIDC, official BigQuery Gold and `mrr_enrichment` |
 | `pipeline/` | Production source capture, arXiv normalization, Dataform hand-off, and independent enrichment | Cloud Run Jobs, BigQuery, Dataform, Gemini Developer API |
 | Cloud Run Job `mrr-production-ingest` | Explicit-window production capture, official Bronze load, arXiv Silver normalization, and Dataform invocation | `mrr-pipeline-runner`, BigQuery, Dataform |
 | Cloud Run Job `mrr-production-enrich` | Bounded, optional public-source tagging and explanation | `mrr-enrichment-runner`, Gold, `mrr_enrichment`, Secret Manager, Gemini Developer API |
@@ -34,7 +34,7 @@ Bronze holds immutable, page-level source responses and fetch manifests. Silver 
 - Dataform executes as `mrr-dataform-runner`; ingestion executes as `mrr-pipeline-runner`; enrichment executes as `mrr-enrichment-runner`; Workflows executes as `mrr-workflow-runner`; Scheduler can only start Workflows as `mrr-scheduler-invoker`. The enrichment identity has access only to Gold, `mrr_enrichment`, logs, and its one Secret Manager secret. Neither pipeline identity has Vercel-reader permissions.
 - No control-plane component retries a whole Job execution. Workflow failure and missing valid Gold snapshots emit log-based email alerts.
 - Gemini Developer API enrichment uses its observed free-project allowance only: 20 requests per day, paced at one request per seven seconds against the 10-RPM limit. A quota response ends enrichment successfully with backlog remaining.
-- The Vercel API uses a dedicated service account, `mrr-vercel-radar-reader`, with project-level BigQuery job creation and read-only access to `mrr_gold` only. It receives no long-lived key: the `mrr-vercel` workload identity pool accepts only the `adam-behrmans-projects/model-release-radar` production Vercel OIDC subject.
+- The Vercel API uses a dedicated service account, `mrr-vercel-radar-reader`, with project-level BigQuery job creation and read-only access to `mrr_gold` and `mrr_enrichment` only. It never reads Bronze, Silver, or Secret Manager. It receives no long-lived key: the `mrr-vercel` workload identity pool accepts only the `adam-behrmans-projects/model-release-radar` production Vercel OIDC subject.
 
 ## Decisions
 

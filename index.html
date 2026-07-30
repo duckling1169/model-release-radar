@@ -30,6 +30,23 @@
 <section class="radar">
   <div class="section-title">Today's radar</div>
   <div id="radar-subtitle" class="section-sub">Loading the latest fully successful run…</div>
+  <div id="filter-bar" class="filter-bar" aria-label="Filter today's radar">
+    <div class="filter-group">
+      <span class="filter-label">Source</span>
+      <div id="source-filters" class="filter-controls" role="group" aria-label="Filter by source">
+        <button class="filter-chip is-selected" type="button" data-source="all" aria-pressed="true">All</button>
+        <button class="filter-chip" type="button" data-source="huggingface" aria-pressed="false">Hugging Face</button>
+        <button class="filter-chip" type="button" data-source="arxiv" aria-pressed="false">arXiv</button>
+      </div>
+    </div>
+    <div class="filter-group filter-tags-group">
+      <span class="filter-label">Classifications</span>
+      <div id="tag-filters" class="filter-controls" role="group" aria-label="Filter by classification">
+        <button class="filter-chip filter-empty" type="button" disabled>Classifications will appear as releases are enriched</button>
+      </div>
+    </div>
+    <div id="filter-count" class="filter-count" aria-live="polite">Loading releases…</div>
+  </div>
   <div class="card-grid" id="radar-grid"><p class="empty-state">Loading…</p></div>
 </section>
 
@@ -41,12 +58,50 @@
     <div id="metrics-rows"><div class="table-row table-row-last"><div class="muted">Loading metrics…</div></div></div>
   </div>
   <div id="table-footnote" class="table-footnote">Waiting for the latest fully successful run.</div>
-  <div class="how-it-runs">
-    <div class="section-title">How it runs</div>
-    <div class="section-sub">Daily source capture produces Gold first; optional enrichment runs independently afterward.</div>
-    <div class="pipeline-row"><div class="pipe-step">Scheduled<br>source capture</div><span class="pipe-arrow">→</span><div class="pipe-step">BigQuery<br>(Bronze)</div><span class="pipe-arrow">→</span><div class="pipe-step">BigQuery<br>(Silver)</div><span class="pipe-arrow">→</span><div class="pipe-step pipe-step-accent">BigQuery<br>(Gold)</div><span class="pipe-arrow">→</span><div class="pipe-step">Gemini<br>(optional context)</div><span class="pipe-arrow">→</span><div class="pipe-step">Vercel API<br>(read-only)</div></div>
+  <div class="architecture">
+    <div class="section-title">Production architecture, at a glance</div>
+    <div class="section-sub">A small, auditable daily pipeline with a read-only public view.</div>
+    <div class="architecture-diagram" aria-label="Production data and control flow diagram">
+      <div class="architecture-lane architecture-lane-core">
+        <div class="diagram-node diagram-node-control"><span class="node-kicker">SCHEDULER · 07:20 UTC</span><strong>Daily trigger</strong></div>
+        <span class="diagram-arrow" aria-hidden="true">→</span>
+        <div class="diagram-node diagram-node-control"><span class="node-kicker">WORKFLOWS</span><strong>Explicit preceding<br>UTC-day window</strong></div>
+        <span class="diagram-arrow" aria-hidden="true">→</span>
+        <div class="diagram-node"><span class="node-kicker">PRIVATE CLOUD RUN JOB</span><strong>Ingest</strong></div>
+      </div>
+      <div class="diagram-connector" aria-hidden="true">↓</div>
+      <div class="architecture-lane architecture-lane-data">
+        <div class="diagram-node"><span class="node-kicker">BIGQUERY</span><strong>Append-only<br>Bronze</strong></div>
+        <span class="diagram-arrow" aria-hidden="true">→</span>
+        <div class="diagram-node"><span class="node-kicker">BIGQUERY</span><strong>Source-specific<br>Silver</strong></div>
+        <span class="diagram-arrow" aria-hidden="true">→</span>
+        <div class="diagram-node diagram-node-control"><span class="node-kicker">DATAFORM</span><strong>Validate &amp; model</strong></div>
+        <span class="diagram-arrow" aria-hidden="true">→</span>
+        <div class="diagram-node diagram-node-gold"><span class="node-kicker">BIGQUERY</span><strong>Complete Gold<br>snapshot</strong></div>
+      </div>
+      <div class="architecture-branches">
+        <div class="architecture-branch">
+          <span class="branch-label">Independent after Gold</span>
+          <div class="branch-flow"><span class="diagram-arrow" aria-hidden="true">↓</span><div class="diagram-node"><span class="node-kicker">CLOUD RUN</span><strong>Enrichment</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">BIGQUERY</span><strong><code>mrr_enrichment</code></strong></div><span class="diagram-arrow" aria-hidden="true">←</span><div class="diagram-node diagram-node-secret"><span class="node-kicker">SECRET MANAGER</span><strong>Gemini key</strong><small>20 RPD · paced</small></div></div>
+        </div>
+        <div class="architecture-branch">
+          <span class="branch-label">Independent health path · 08:00 UTC</span>
+          <div class="branch-flow"><div class="diagram-node diagram-node-control"><span class="node-kicker">SCHEDULER</span><strong>Gold health check</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">MONITORING</span><strong>Email alert on<br>missing Gold</strong></div></div>
+        </div>
+      </div>
+      <div class="architecture-access">
+        <div class="diagram-node diagram-node-control"><span class="node-kicker">VERCEL OIDC</span><strong>Keyless identity</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">READ-ONLY API</span><strong>Gold + enrichment</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">BROWSER</span><strong>Dashboard</strong></div>
+      </div>
+    </div>
+    <div class="architecture-callouts">
+      <div><strong>Traceable lineage</strong><span>Append-only capture retains source and run history.</span></div>
+      <div><strong>Least privilege</strong><span>Separate identities limit each scheduler, job, and reader.</span></div>
+      <div><strong>Safe failures</strong><span>No whole-job retry; enrichment cannot invalidate Gold.</span></div>
+      <div><strong>No credentials in the UI</strong><span>Vercel uses OIDC; the browser receives neither secrets nor model metadata.</span></div>
+    </div>
   </div>
 </section>
+<script src="filter.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
