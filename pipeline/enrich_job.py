@@ -41,6 +41,12 @@ def now_z() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+def timestamp_z(value: object) -> str:
+    if isinstance(value, datetime):
+        return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    return str(value)
+
+
 def bounded(value: object, limit: int) -> str:
     """Normalize public source text and bound the request payload."""
     return " ".join(str(value or "").split())[:limit]
@@ -130,12 +136,17 @@ def call_gemini(api_key: str, payload: dict[str, object], *, post=requests.post)
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent?key={api_key}"
     for attempt in range(3):
         response = post(url, json=request_body(payload), timeout=30)
-        if response.status_code in {429, 403} and "quota" in response.text.lower():
+        # Every 429 is a rate/quota boundary. Never call raise_for_status here:
+        # requests includes the full URL (and its API key) in that exception.
+        if response.status_code == 429:
+            raise QuotaExhausted("Gemini free-tier quota reached")
+        if response.status_code == 403 and "quota" in response.text.lower():
             raise QuotaExhausted("Gemini free-tier quota reached")
         if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
             time.sleep(2 * (attempt + 1))
             continue
-        response.raise_for_status()
+        if not response.ok:
+            raise RuntimeError(f"Gemini HTTP {response.status_code}")
         try:
             text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
             return validate_response(json.loads(text))
@@ -240,7 +251,7 @@ def main() -> int:
                 "source": item["source"], "source_id": item["source_id"], "gold_run_id": item["bronze_run_id"],
                 "model_id": MODEL_ID, "prompt_version": PROMPT_VERSION, "input_hash": input_hash(payload),
                 "tags": [], "explanation": None, "status": "failed", "failure_reason": None,
-                "attempt_number": item["attempt_number"], "source_published_at": item["source_published_at"], "created_at": now_z(),
+                "attempt_number": item["attempt_number"], "source_published_at": timestamp_z(item["source_published_at"]), "created_at": now_z(),
             }
             try:
                 tags, explanation, status = call_gemini(key, payload)

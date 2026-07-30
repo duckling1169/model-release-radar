@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -22,6 +23,10 @@ class M6EnrichmentContractTests(unittest.TestCase):
         self.assertIn("never forward the raw metadata blob", source)
         self.assertIn("responseJsonSchema", source)
         self.assertIn("succeeded_with_backlog", source)
+        self.assertIn("timestamp_z(item[\"source_published_at\"])", source)
+        self.assertIn("if response.status_code == 429", source)
+        self.assertIn("Gemini HTTP {response.status_code}", source)
+        self.assertNotIn("response.raise_for_status()", source)
 
     def test_enrichment_is_append_only_and_separate_from_gold(self) -> None:
         self.assertIn('ENRICHMENT = "mrr_enrichment"', SCHEMA)
