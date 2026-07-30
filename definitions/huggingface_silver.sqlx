@@ -15,10 +15,10 @@ USING (
     JSON_VALUE(model, '$.author') AS author,
     CONCAT('https://huggingface.co/', COALESCE(JSON_VALUE(model, '$.modelId'), JSON_VALUE(model, '$.id'))) AS canonical_url,
     JSON_VALUE(model, '$.pipeline_tag') AS pipeline_tag,
-    EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'^(?!.*(readme|license|\\.gitignore|\\.gitattributes)).+')) AS has_usable_artifact,
+    EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE JSON_VALUE(sibling, '$.rfilename') != '' AND NOT REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'(readme|license|\\.gitignore|\\.gitattributes)')) AS has_usable_artifact,
     JSON_QUERY(model, '$.config') IS NOT NULL AS has_usable_config,
-    (JSON_VALUE(model, '$.pipeline_tag') IS NOT NULL OR JSON_QUERY(model, '$.config') IS NOT NULL OR EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'^(?!.*(readme|license|\\.gitignore|\\.gitattributes)).+'))) AS qualifies,
-    IF(JSON_VALUE(model, '$.pipeline_tag') IS NULL AND JSON_QUERY(model, '$.config') IS NULL AND NOT EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'^(?!.*(readme|license|\\.gitignore|\\.gitattributes)).+')), 'missing_pipeline_tag_and_usable_artifact_or_config', NULL) AS exclusion_reason,
+    (JSON_VALUE(model, '$.pipeline_tag') IS NOT NULL OR JSON_QUERY(model, '$.config') IS NOT NULL OR EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE JSON_VALUE(sibling, '$.rfilename') != '' AND NOT REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'(readme|license|\\.gitignore|\\.gitattributes)'))) AS qualifies,
+    IF(JSON_VALUE(model, '$.pipeline_tag') IS NULL AND JSON_QUERY(model, '$.config') IS NULL AND NOT EXISTS (SELECT 1 FROM UNNEST(JSON_QUERY_ARRAY(model, '$.siblings')) sibling WHERE JSON_VALUE(sibling, '$.rfilename') != '' AND NOT REGEXP_CONTAINS(LOWER(JSON_VALUE(sibling, '$.rfilename')), r'(readme|license|\\.gitignore|\\.gitattributes)')), 'missing_pipeline_tag_and_usable_artifact_or_config', NULL) AS exclusion_reason,
     model AS source_metadata, raw.run_id AS bronze_run_id, raw.page_number AS bronze_page_number,
     offset AS source_record_index, CURRENT_TIMESTAMP() AS processed_at, 'm4-v1' AS transform_version
   FROM `project-90394262-994e-4667-90d.mrr_bronze.huggingface_responses_raw` raw,
