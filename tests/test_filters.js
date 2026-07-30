@@ -9,10 +9,11 @@ const items = [
   { source: 'huggingface', source_id: 'fourth' },
 ];
 
-test('derives only controlled classifications and supports the unenriched state', () => {
+test('derives controlled classifications and defaults unenriched items to unclassified', () => {
   assert.deepEqual(itemTags(items[2]), ['language']);
-  assert.deepEqual(availableTags(items), ['agents', 'code', 'language', 'vision']);
-  assert.deepEqual(availableTags([{ source: 'arxiv' }]), []);
+  assert.deepEqual(itemTags(items[3]), ['unclassified']);
+  assert.deepEqual(availableTags(items), ['agents', 'code', 'language', 'unclassified', 'vision']);
+  assert.deepEqual(availableTags([{ source: 'arxiv' }]), ['unclassified']);
 });
 
 test('filters sources without changing source-publication order', () => {

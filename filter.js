@@ -7,7 +7,8 @@
 
   function itemTags(item) {
     const tags = item?.enrichment?.tags;
-    return Array.isArray(tags) ? [...new Set(tags.filter((tag) => taxonomy.has(tag)))] : [];
+    const controlled = Array.isArray(tags) ? [...new Set(tags.filter((tag) => taxonomy.has(tag)))] : [];
+    return controlled.length ? controlled : ['unclassified'];
   }
 
   function availableTags(items) {
