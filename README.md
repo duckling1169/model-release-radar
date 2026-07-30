@@ -1,18 +1,18 @@
 # Model Release Radar
 
-A daily-updated dashboard tracking new AI model releases and papers from HuggingFace, arXiv, and GitHub trending — with the pipeline's own numbers shown alongside it (raw vs. modeled row counts, reconciliation match rate, and the reasoning behind each notability tag).
+A daily-updated dashboard tracking new public Hugging Face model releases and first-submission AI papers from arXiv. It will show the pipeline's own numbers alongside the feed: raw, qualified, and displayed counts, plus reconciliation and freshness information.
 
-This repo currently contains the static front end: a pixel-close, standalone implementation of the [Claude Design](https://claude.ai/design) mockup for the project, with a working light/dark theme toggle. It has no backend yet — all data shown is placeholder content matching the design.
+This repo contains the Vercel-hosted dashboard and its same-origin read API. The UI fetches the newest fully successful snapshot from official BigQuery Gold data; it never receives Google Cloud credentials or queries BigQuery directly. It retains the working light/dark theme toggle.
 
-## Stack (planned)
+## Data architecture
 
-- **Ingest:** Cloud Run job pulling from the HuggingFace, arXiv, and GitHub APIs
-- **Storage/transform:** BigQuery (raw) → Dataform (modeled)
-- **Classification:** Gemini API, tagging releases as notable and explaining why
-- **Scheduling:** Cloud Scheduler
-- **Dashboard:** this site, eventually served from Cloud Run and reading live data
+- **Sources:** Hugging Face (new public model repositories) and arXiv (first submissions in `cs.AI`, `cs.CL`, and `cs.LG`)
+- **Storage/transform:** BigQuery Bronze (verbatim source capture) → Silver (source-specific normalization) → Gold (materialized dashboard data and metrics)
+- **Production operation:** Cloud Scheduler starts a Workflow daily at 00:20 UTC; it invokes Cloud Run with the preceding completed UTC day, then Dataform makes Hugging Face Silver and Gold. A second Workflow verifies the complete two-source Gold snapshot at 01:00 UTC.
+- **Later:** optional Gemini classification after the feed is trustworthy
+- **Dashboard:** Vercel serves the browser UI plus a short-lived-credential, read-only `/api/radar` adapter over Gold; Cloud Run remains a later production replacement behind the same browser contract
 
-Everything is designed to run on GCP free-tier services.
+Everything on GCP is designed to remain within Always Free tier quotas. The full source, lineage, filtering, and layer contracts are in [DATA_CONTRACT.md](DATA_CONTRACT.md).
 
 ## Running locally
 
@@ -23,6 +23,25 @@ python3 -m http.server 8000
 ```
 
 Then open `http://localhost:8000`.
+
+The static server does not run `/api/radar`; the page deliberately shows its unavailable state locally. Deploy through Vercel to exercise the live API.
+
+## Live dashboard API (M3)
+
+`GET /api/radar` returns up to 50 newest Gold items and source metrics for the newest run that completed successfully for both sources. It caches at Vercel for five minutes, permits one hour of stale-while-revalidate, and returns `503 {"status":"unavailable"}` rather than a mixed or partial run.
+
+The function exchanges Vercel's production OIDC token for a short-lived identity. Its production environment needs `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, `GCP_SERVICE_ACCOUNT_EMAIL`, `GCP_WORKLOAD_IDENTITY_POOL_ID`, and `GCP_WORKLOAD_IDENTITY_POOL_PROVIDER_ID`; no service-account key is used. Vercel project Security must use the team issuer mode for `adam-behrmans-projects`.
+
+## Production operation (M5)
+
+Official `mrr_bronze`, `mrr_silver`, and `mrr_gold` have no expiration. The private Job accepts no implicit "now" window; Workflows supplies explicit UTC bounds. The normal schedule is fully automated, but an authenticated maintainer can still manually invoke the Job when needed:
+
+```
+gcloud run jobs execute mrr-production-ingest --region=us-east5 --wait \
+  --args=--start,2026-07-29T20:00:00Z,--end,2026-07-29T21:00:00Z
+```
+
+It first checks a 5 GiB BigQuery storage guard and a 900 GiB calendar-month query guard. Successful source capture is append-only in Bronze even if the later run fails. Dataform repository `mrr-production` is connected to this GitHub repository through Developer Connect. Scheduler and Workflows never retry a whole Job; Cloud Monitoring emails the maintainer for a Workflow failure or a missing valid two-source Gold snapshot.
 
 ## Files
 
