@@ -1,3 +1,4 @@
+// M4 Gold materialization, deliberately after quality gates.
 config { type: "operations", dependencies: ["source_id_uniqueness", "lineage_complete"] }
 
 DECLARE mrr_run_id STRING DEFAULT "${dataform.projectConfig.vars.run_id}";

@@ -1,5 +1,6 @@
 defaultProject: project-90394262-994e-4667-90d
 defaultLocation: US
 defaultDataset: mrr_dataform_assertions
+defaultAssertionDataset: mrr_dataform_assertions
 vars:
   run_id: ""
