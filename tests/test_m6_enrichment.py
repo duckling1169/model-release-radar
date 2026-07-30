@@ -17,7 +17,8 @@ class M6EnrichmentContractTests(unittest.TestCase):
     def test_enrichment_job_is_bounded_and_uses_only_approved_public_fields(self) -> None:
         source = JOB.read_text(encoding="utf-8")
         ast.parse(source)
-        self.assertIn('DAILY_REQUEST_CAP = int(os.environ.get("GEMINI_DAILY_REQUEST_CAP", "100"))', source)
+        self.assertIn('DAILY_REQUEST_CAP = int(os.environ.get("GEMINI_DAILY_REQUEST_CAP", "20"))', source)
+        self.assertIn("MIN_REQUEST_INTERVAL_SECONDS = 7", source)
         self.assertIn("summary_or_abstract", source)
         self.assertIn("selected_metadata", source)
         self.assertIn("never forward the raw metadata blob", source)

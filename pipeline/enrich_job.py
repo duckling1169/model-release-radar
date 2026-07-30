@@ -24,7 +24,8 @@ LOCATION = "US"
 GOLD, ENRICHMENT = "mrr_gold", "mrr_enrichment"
 MODEL_ID = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 PROMPT_VERSION = "m6-v1"
-DAILY_REQUEST_CAP = int(os.environ.get("GEMINI_DAILY_REQUEST_CAP", "100"))
+DAILY_REQUEST_CAP = int(os.environ.get("GEMINI_DAILY_REQUEST_CAP", "20"))
+MIN_REQUEST_INTERVAL_SECONDS = 7
 SECRET_RESOURCE = os.environ.get(
     "GEMINI_SECRET_RESOURCE",
     f"projects/{PROJECT_ID}/secrets/mrr-gemini-api-key/versions/latest",
@@ -227,8 +228,8 @@ def api_key() -> str:
 
 
 def main() -> int:
-    if DAILY_REQUEST_CAP < 1 or DAILY_REQUEST_CAP > 100:
-        raise ValueError("GEMINI_DAILY_REQUEST_CAP must be between 1 and 100")
+    if DAILY_REQUEST_CAP < 1 or DAILY_REQUEST_CAP > 20:
+        raise ValueError("GEMINI_DAILY_REQUEST_CAP must be between 1 and 20")
     client = bigquery.Client(project=PROJECT_ID, location=LOCATION)
     run_id, started_at = f"enrich_{datetime.now(UTC):%Y%m%dT%H%M%SZ}_{uuid.uuid4().hex[:8]}", now_z()
     gold_run_id: str | None = None
@@ -242,7 +243,11 @@ def main() -> int:
             return 0
         selected, newest_count, backlog_count = candidates(client, gold_run_id, DAILY_REQUEST_CAP)
         key = api_key() if selected else ""
-        for item in selected:
+        for index, item in enumerate(selected):
+            if index:
+                # The confirmed free quota is 10 RPM. Seven seconds leaves
+                # slack for network variation and keeps the Job below it.
+                time.sleep(MIN_REQUEST_INTERVAL_SECONDS)
             attempted += 1
             payload = approved_input(item)
             result: dict[str, object] = {

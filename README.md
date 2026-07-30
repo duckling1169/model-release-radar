@@ -45,7 +45,7 @@ It first checks a 5 GiB BigQuery storage guard and a 900 GiB calendar-month quer
 
 ## Optional Gemini enrichment (M6)
 
-`mrr-production-enrich` is a separate Cloud Run Job started only after core ingestion has made Gold. It reads bounded, public Gold fields, writes immutable attempts and run records to `mrr_enrichment`, and leaves Bronze, Silver, Gold, and dashboard availability untouched on error or quota exhaustion. It uses Gemini Developer API free tier only, without grounding, with a hard `GEMINI_DAILY_REQUEST_CAP=100` default. The dedicated API key lives only in Secret Manager and is readable only by the enrichment identity; do not place it in Git, Vercel, the browser, or logs. Free-tier submitted content may be used by Google to improve products, so only the documented public fields are sent. Model or prompt changes apply to future releases only; existing enrichment is not rewritten.
+`mrr-production-enrich` is a separate Cloud Run Job started only after core ingestion has made Gold. It reads bounded, public Gold fields, writes immutable attempts and run records to `mrr_enrichment`, and leaves Bronze, Silver, Gold, and dashboard availability untouched on error or quota exhaustion. It uses Gemini Developer API free tier only, without grounding, with the verified free-tier cap of 20 requests per day and seven-second pacing below its 10 RPM limit. The dedicated API key lives only in Secret Manager and is readable only by the enrichment identity; do not place it in Git, Vercel, the browser, or logs. Free-tier submitted content may be used by Google to improve products, so only the documented public fields are sent. Model or prompt changes apply to future releases only; existing enrichment is not rewritten.
 
 ## Files
 
