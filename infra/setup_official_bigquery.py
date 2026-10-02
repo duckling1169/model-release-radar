@@ -2,7 +2,8 @@
 """Create the official append-only BigQuery datasets and typed tables.
 
 This command is intentionally idempotent and has no reset counterpart.  It
-never alters an existing table and never assigns a default expiration.
+never alters an existing table. Raw response pages expire after 90 days;
+every other table is kept indefinitely.
 """
 
 from __future__ import annotations
@@ -67,7 +68,9 @@ def main() -> int:
     for table, fields in schema.items():
         partition = "run_started_at" if table.endswith("fetch_runs") else "fetched_at" if table.endswith("_raw") else "created_at" if table.endswith("item_enrichments") else "started_at" if table.endswith("enrichment_runs") else "processed_at" if table.endswith("transform_runs") else "source_published_at" if ".mrr_silver" in f".{table}" else "radar_date" if table.endswith("radar_items") else "metric_date" if table.endswith("daily_source_metrics") else "processed_at"
         expression = partition if partition in {"radar_date", "metric_date"} else f"DATE({partition})"
-        query(f"CREATE TABLE IF NOT EXISTS `{PROJECT_ID}.{table}` ({fields}) PARTITION BY {expression}")
+        # Raw pages are only needed to replay recent runs; they are most of the storage.
+        options = " OPTIONS (partition_expiration_days = 90)" if table.endswith("_raw") else ""
+        query(f"CREATE TABLE IF NOT EXISTS `{PROJECT_ID}.{table}` ({fields}) PARTITION BY {expression}{options}")
     print(f"ready: {BRONZE}, {SILVER}, {GOLD}, {ENRICHMENT}, {ASSERTIONS} in US")
     return 0
 

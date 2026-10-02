@@ -59,7 +59,7 @@
     <ol class="how-steps">
       <li><b>07:20 UTC</b>Cloud Scheduler starts a Workflow that collects yesterday's UTC window.</li>
       <li><b>Bronze</b>Raw source pages land in BigQuery, append-only, with a fetch manifest.</li>
-      <li><b>Silver</b>arXiv is normalized in Python and Hugging Face in Dataform, deduplicated by ID.</li>
+      <li><b>Silver</b>arXiv (one announcement feed) is normalized in Python and Hugging Face in Dataform, deduplicated by ID.</li>
       <li><b>Gold</b>Dataform builds this feed and these counts, guarded by assertions.</li>
       <li><b>Enrichment</b>Gemini adds tags afterwards on the free tier. It can't block the feed.</li>
       <li><b>This page</b>A Vercel function reads Gold through OIDC. No keys anywhere.</li>

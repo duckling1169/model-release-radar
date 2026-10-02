@@ -27,7 +27,8 @@ from urllib.request import Request, urlopen
 
 
 HUGGINGFACE_URL = "https://huggingface.co/api/models"
-ARXIV_URL = "https://export.arxiv.org/api/query"
+# arXiv's announcement feed: exactly what was announced on the latest mailing day.
+ARXIV_FEED_URL = "https://rss.arxiv.org/atom/cs.AI+cs.CL+cs.LG"
 USER_AGENT = "model-release-radar/0.1 (+https://github.com/duckling1169/model-release-radar)"
 DEFAULT_OUTPUT_DIR = Path("data/raw")
 SYSTEM_CA_BUNDLE = Path("/etc/ssl/cert.pem")
@@ -36,11 +37,12 @@ RECENT_WINDOW_LIMIT = timedelta(hours=48)
 MAX_RETRIES = 5
 RETRY_BASE_SECONDS = 15  # arXiv rate limits (429) need minutes, not seconds, to clear
 REQUEST_TIMEOUT_SECONDS = 30
-ARXIV_REQUEST_DELAY_SECONDS = 3
 HUGGINGFACE_PAGE_SIZE = 100
-ARXIV_PAGE_SIZE = 100
 
-ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
+ATOM_NS = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
+# "new" is a first submission in these categories; "cross" is a first submission
+# elsewhere, cross-listed here. Replacements are revisions.
+ARXIV_FIRST_ANNOUNCEMENTS = {"new", "cross"}
 
 
 class CollectionError(RuntimeError):
@@ -194,7 +196,8 @@ def arxiv_page_stats(body: bytes, window: RunWindow) -> tuple[int, int, datetime
             raise CollectionError("arXiv entry had no published timestamp")
         published_at = parse_source_timestamp(published)
         timestamps.append(published_at)
-        if in_window(published_at, window):
+        announce_type = entry.findtext("arxiv:announce_type", namespaces=ATOM_NS)
+        if announce_type in ARXIV_FIRST_ANNOUNCEMENTS and in_window(published_at, window):
             window_count += 1
     return len(entries), window_count, min(timestamps) if timestamps else None
 
@@ -268,17 +271,6 @@ def collect_huggingface(
     return manifest
 
 
-def arxiv_query_url(start: int) -> str:
-    params = {
-        "search_query": "cat:cs.AI OR cat:cs.CL OR cat:cs.LG",
-        "start": start,
-        "max_results": ARXIV_PAGE_SIZE,
-        "sortBy": "submittedDate",
-        "sortOrder": "descending",
-    }
-    return f"{ARXIV_URL}?{urlencode(params)}"
-
-
 def collect_arxiv(
     source_dir: Path,
     window: RunWindow,
@@ -287,35 +279,19 @@ def collect_arxiv(
     sleep_fn: Callable[[float], None],
     clock: Callable[[], datetime],
 ) -> dict[str, object]:
+    """One request: the announcement feed. Entries are dated by announcement day,
+    so a window with no mailing (weekends, holidays) correctly has none."""
     pages_dir = source_dir / "pages"
     pages_dir.mkdir(parents=True)
-    pages: list[dict[str, object]] = []
-    response_records = 0
-    window_records = 0
-    start = 0
-
-    while True:
-        if len(pages) >= max_pages:
-            raise SafetyLimitError(f"arXiv reached --max-pages={max_pages} before covering the window")
-        if pages:
-            sleep_fn(ARXIV_REQUEST_DELAY_SECONDS)
-        response = fetch_with_retry(arxiv_query_url(start), fetcher, sleep_fn)
-        filename = f"{len(pages) + 1:04d}.xml"
-        (pages_dir / filename).write_bytes(response.body)
-        count, matched_count, oldest = arxiv_page_stats(response.body, window)
-        pages.append(page_manifest(len(pages) + 1, response, f"pages/{filename}", count, matched_count, clock()))
-        response_records += count
-        window_records += matched_count
-        if count == 0 or not oldest or oldest < window.start:
-            break
-        start += ARXIV_PAGE_SIZE
-
+    response = fetch_with_retry(ARXIV_FEED_URL, fetcher, sleep_fn)
+    (pages_dir / "0001.xml").write_bytes(response.body)
+    count, window_count, _ = arxiv_page_stats(response.body, window)
     manifest = {
         "source": "arxiv",
         "status": "succeeded",
-        "response_record_count": response_records,
-        "window_record_count": window_records,
-        "pages": pages,
+        "response_record_count": count,
+        "window_record_count": window_count,
+        "pages": [page_manifest(1, response, "pages/0001.xml", count, window_count, clock())],
     }
     write_json(source_dir / "manifest.json", manifest)
     return manifest

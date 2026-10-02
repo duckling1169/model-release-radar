@@ -14,16 +14,19 @@ displayed counts per source, plus freshness), so filtering is visible rather tha
 | Source | Included | Excluded |
 | --- | --- | --- |
 | Hugging Face | Newly created public model repositories | Updates to existing repos; private repos |
-| arXiv | First submissions in `cs.AI`, `cs.CL`, `cs.LG` | Revisions; every other category |
+| arXiv | Papers first announced in `cs.AI`, `cs.CL`, `cs.LG` (new and cross-listed) | Revisions; every other category |
 
 A Hugging Face model reaches the dashboard only if it declares a task (`pipeline_tag`) or
 ships a usable model artifact or config. Excluded records stay in Silver with a reason.
+
+arXiv is read from its daily announcement feed, one request a run, so each day shows
+exactly what arXiv announced. Weekends and holidays have no announcement and show none.
 
 ## How it works
 
 ```
 Cloud Scheduler (07:20 UTC) → Workflows → Cloud Run Job: collect yesterday (UTC)
-  → Bronze: raw source pages, append-only
+  → Bronze: raw source pages, append-only, kept for 90 days
   → Silver: arXiv normalized in Python; Hugging Face normalized in Dataform
   → Gold: Dataform materializes dashboard items and daily metrics, with assertions
   → Optional Gemini enrichment: tags and a short explanation, stored outside Gold

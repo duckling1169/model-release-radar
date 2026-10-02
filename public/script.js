@@ -10,9 +10,9 @@
       ['Listed', 'Models in the feed below.', 'gold_item_count'],
     ],
     arxiv: [
-      ['Fetched', 'Entries returned while paging back to the window.', 'raw_response_record_count'],
-      ['In window', 'Submitted during the UTC day, in any category.', 'raw_window_record_count'],
-      ['Qualified', 'First submissions in cs.AI, cs.CL or cs.LG.', 'silver_qualified_count'],
+      ['Fetched', 'Entries in the latest announcement feed.', 'raw_response_record_count'],
+      ['In window', 'New and cross-listed papers announced that day.', 'raw_window_record_count'],
+      ['Qualified', 'Parsed and in cs.AI, cs.CL or cs.LG.', 'silver_qualified_count'],
       ['Listed', 'Papers in the feed below.', 'gold_item_count'],
     ],
   };
@@ -66,7 +66,7 @@
     const [, inWindow, qualified] = stages;
     $('excluded').textContent = number(Math.max(inWindow.value - qualified.value, 0));
     $('excluded-desc').textContent = state.source === 'arxiv'
-      ? 'Revisions and papers outside the three categories.'
+      ? 'Announced papers that failed to parse or match a category.'
       : 'No task, model artifact or config. Kept in Silver with a reason.';
     document.querySelectorAll('#source-tabs .tab').forEach((tab) => {
       const active = tab.dataset.source === state.source;

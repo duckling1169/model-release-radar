@@ -25,7 +25,7 @@ WINDOW = collector.RunWindow(
 NOW = datetime(2026, 7, 30, 0, 1, tzinfo=UTC)
 HUGGINGFACE_FIRST = b'[{"modelId":"org/first","createdAt":"2026-07-29T18:00:00Z"},{"modelId":"org/second","createdAt":"2026-07-29T01:00:00Z"}]'
 HUGGINGFACE_SECOND = b'[{"modelId":"org/older","createdAt":"2026-07-28T23:00:00Z"}]'
-ARXIV_PAGE = b'''<feed xmlns="http://www.w3.org/2005/Atom"><entry><id>http://arxiv.org/abs/2607.00001v1</id><published>2026-07-29T12:00:00Z</published></entry><entry><id>http://arxiv.org/abs/2607.00002v1</id><published>2026-07-28T23:00:00Z</published></entry></feed>'''
+ARXIV_PAGE = b'''<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns:dc="http://purl.org/dc/elements/1.1/"><entry><id>oai:arXiv.org:2607.00001v1</id><title> Paper 1 </title><summary>arXiv:2607.00001v1 Announce Type: new Abstract: Summary 1</summary><category term="cs.AI"/><published>2026-07-29T00:00:00-04:00</published><arxiv:announce_type>new</arxiv:announce_type><dc:creator>Ada Lovelace, Alan Turing</dc:creator></entry><entry><id>oai:arXiv.org:2607.00002v1</id><title> Paper 2 </title><summary>arXiv:2607.00002v1 Announce Type: cross Abstract: Summary 2</summary><category term="cs.CL"/><published>2026-07-29T00:00:00-04:00</published><arxiv:announce_type>cross</arxiv:announce_type><dc:creator>Ada Lovelace, Alan Turing</dc:creator></entry><entry><id>oai:arXiv.org:2607.00003v1</id><title> Paper 3 </title><summary>arXiv:2607.00003v1 Announce Type: replace Abstract: Summary 3</summary><category term="cs.LG"/><published>2026-07-29T00:00:00-04:00</published><arxiv:announce_type>replace</arxiv:announce_type><dc:creator>Ada Lovelace, Alan Turing</dc:creator></entry><entry><id>oai:arXiv.org:2607.00004v1</id><title> Paper 4 </title><summary>arXiv:2607.00004v1 Announce Type: new Abstract: Summary 4</summary><category term="cs.LG"/><published>2026-07-28T00:00:00-04:00</published><arxiv:announce_type>new</arxiv:announce_type><dc:creator>Ada Lovelace, Alan Turing</dc:creator></entry></feed>'''
 
 
 def headers(**values: str) -> Message:
@@ -74,7 +74,7 @@ class FetchSourcesTests(unittest.TestCase):
             self.assertEqual((source_dir / "pages/0001.json").read_bytes(), HUGGINGFACE_FIRST)
             self.assertEqual(calls, [calls[0], next_url])
 
-    def test_arxiv_stats_use_published_not_updated_and_preserve_xml(self) -> None:
+    def test_arxiv_counts_first_announcements_in_window_from_one_request(self) -> None:
         calls: list[str] = []
 
         def fetcher(url: str) -> collector.HttpResponse:
@@ -89,8 +89,8 @@ class FetchSourcesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             source_dir = Path(temp_dir) / "arxiv"
             manifest = collector.collect_arxiv(source_dir, WINDOW, 10, fetcher, lambda _: None, lambda: NOW)
-            self.assertEqual(manifest["response_record_count"], 2)
-            self.assertEqual(manifest["window_record_count"], 1)
+            self.assertEqual(manifest["response_record_count"], 4)
+            self.assertEqual(manifest["window_record_count"], 2)
             self.assertEqual(len(calls), 1)
             self.assertEqual((source_dir / "pages/0001.xml").read_bytes(), ARXIV_PAGE)
 

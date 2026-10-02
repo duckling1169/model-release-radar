@@ -22,7 +22,7 @@ from google.cloud import bigquery, secretmanager
 PROJECT_ID = "project-90394262-994e-4667-90d"
 LOCATION = "US"
 GOLD, ENRICHMENT = "mrr_gold", "mrr_enrichment"
-MODEL_ID = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+MODEL_ID = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 PROMPT_VERSION = "m6-v1"
 DAILY_REQUEST_CAP = int(os.environ.get("GEMINI_DAILY_REQUEST_CAP", "20"))
 MIN_REQUEST_INTERVAL_SECONDS = 7
@@ -145,11 +145,12 @@ class QuotaExhausted(RuntimeError):
 
 
 def call_gemini(api_key: str, payload: dict[str, object], *, post=requests.post) -> tuple[list[str], str | None, str]:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL_ID}:generateContent"
+    # The key travels in a header so it can never appear in a URL, exception or log.
+    headers = {"x-goog-api-key": api_key}
     for attempt in range(3):
-        response = post(url, json=request_body(payload), timeout=30)
-        # Every 429 is a rate/quota boundary. Never call raise_for_status here:
-        # requests includes the full URL (and its API key) in that exception.
+        response = post(url, json=request_body(payload), headers=headers, timeout=30)
+        # Every 429 is a rate/quota boundary.
         if response.status_code == 429:
             raise QuotaExhausted("Gemini free-tier quota reached")
         if response.status_code == 403 and "quota" in response.text.lower():
