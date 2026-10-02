@@ -135,7 +135,7 @@ class FetchSourcesTests(unittest.TestCase):
         result = collector.fetch_with_retry("https://example.test", fetcher, delays.append)
         self.assertEqual(result.status, 200)
         self.assertEqual(calls, 2)
-        self.assertEqual(delays, [1])
+        self.assertEqual(delays, [collector.RETRY_BASE_SECONDS])
 
     def test_manifest_is_valid_json(self) -> None:
         def fetcher(url: str) -> collector.HttpResponse:

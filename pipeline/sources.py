@@ -33,7 +33,8 @@ DEFAULT_OUTPUT_DIR = Path("data/raw")
 SYSTEM_CA_BUNDLE = Path("/etc/ssl/cert.pem")
 DEFAULT_MAX_PAGES = 1_000
 RECENT_WINDOW_LIMIT = timedelta(hours=48)
-MAX_RETRIES = 3
+MAX_RETRIES = 5
+RETRY_BASE_SECONDS = 15  # arXiv rate limits (429) need minutes, not seconds, to clear
 REQUEST_TIMEOUT_SECONDS = 30
 ARXIV_REQUEST_DELAY_SECONDS = 3
 HUGGINGFACE_PAGE_SIZE = 100
@@ -150,7 +151,7 @@ def fetch_with_retry(
             last_error = exc
 
         if attempt < MAX_RETRIES - 1:
-            sleep_fn(2**attempt)
+            sleep_fn(RETRY_BASE_SECONDS * 2**attempt)
 
     raise CollectionError(f"request failed after {MAX_RETRIES} attempts: {url}: {last_error}")
 
