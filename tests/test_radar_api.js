@@ -29,8 +29,8 @@ test('builds a snapshot from the newest complete run only', async () => {
   assert.match(radar.ITEMS_SQL, /mrr_enrichment\.item_enrichments/);
   assert.match(radar.ITEMS_SQL, /LEFT JOIN latest_enrichment/);
   assert.doesNotMatch(radar.ITEMS_SQL, /model_id|prompt_version|input_hash|failure_reason/i);
-  assert.deepEqual(calls[1].parameters, radar.runParameter('complete-run'));
-  assert.deepEqual(calls[2].parameters, radar.runParameter('complete-run'));
+  assert.deepEqual(calls[1].parameters, radar.parameters({ run_id: 'complete-run' }));
+  assert.deepEqual(calls[2].parameters, radar.parameters({ window_start: '2026-07-29 00:00:00+00', window_end: '2026-07-30 00:00:00+00' }));
 });
 
 test('returns null when Gold has no fully successful run', async () => {

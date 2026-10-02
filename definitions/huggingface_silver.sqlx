@@ -30,8 +30,13 @@ SELECT
   COUNT(*) AS parsed_count,
   COUNTIF(target_row.source_id IS NULL) AS inserted_count,
   COUNT(*) - COUNTIF(target_row.source_id IS NULL) AS duplicate_count,
-  COUNTIF(hf_staging.qualifies AND target_row.source_id IS NULL) AS qualified_count
+  COUNTIF(hf_staging.qualifies AND hf_staging.source_published_at >= fetch.window_start
+    AND hf_staging.source_published_at < fetch.window_end) AS qualified_count
 FROM hf_staging
+CROSS JOIN (
+  SELECT window_start, window_end FROM `project-90394262-994e-4667-90d.mrr_bronze.fetch_runs`
+  WHERE run_id = mrr_run_id AND source = 'huggingface'
+) fetch
 LEFT JOIN `project-90394262-994e-4667-90d.mrr_silver.huggingface_model_releases` target_row USING (source_id);
 
 MERGE `project-90394262-994e-4667-90d.mrr_silver.huggingface_model_releases` target

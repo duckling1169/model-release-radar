@@ -29,7 +29,8 @@ USING (
   JOIN `project-90394262-994e-4667-90d.mrr_silver.transform_runs` transform
     ON source_fetch.run_id = transform.run_id AND source_fetch.source = transform.source
   LEFT JOIN `project-90394262-994e-4667-90d.mrr_gold.radar_items` item
-    ON item.bronze_run_id = source_fetch.run_id AND item.source = source_fetch.source
+    ON item.source = source_fetch.source
+    AND item.source_published_at >= source_fetch.window_start AND item.source_published_at < source_fetch.window_end
   WHERE source_fetch.run_id = mrr_run_id AND source_fetch.source_status = 'succeeded'
   GROUP BY metric_date, source_fetch.run_id, source_fetch.source, source_fetch.window_start, source_fetch.window_end, source_fetch.source_status,
     raw_page_count, raw_response_record_count, raw_window_record_count, silver_parsed_count,

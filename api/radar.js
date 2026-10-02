@@ -85,11 +85,11 @@ const ITEMS_SQL = `WITH latest_enrichment AS (
     IF(enrichment.source IS NULL, NULL, STRUCT(enrichment.tags AS tags, enrichment.explanation AS explanation)) AS enrichment
   FROM \`${PROJECT_ID}.${GOLD_DATASET}.radar_items\` item
   LEFT JOIN latest_enrichment enrichment USING (source, source_id)
-  WHERE item.bronze_run_id = @run_id
+  WHERE item.source_published_at >= TIMESTAMP(@window_start) AND item.source_published_at < TIMESTAMP(@window_end)
   ORDER BY item.source_published_at DESC, item.source, item.source_id LIMIT 50`;
 
-function runParameter(runId) {
-  return [{ name: 'run_id', parameterType: { type: 'STRING' }, parameterValue: { value: runId } }];
+function parameters(values) {
+  return Object.entries(values).map(([name, value]) => ({ name, parameterType: { type: 'STRING' }, parameterValue: { value } }));
 }
 
 async function buildSnapshot(req, dependencies = { googleAccessToken, bigQuery }) {
@@ -97,7 +97,7 @@ async function buildSnapshot(req, dependencies = { googleAccessToken, bigQuery }
   const runs = await dependencies.bigQuery(accessToken, LATEST_RUN_SQL);
   if (!runs.length) return null;
   const run = runs[0];
-  const [metrics, items] = await Promise.all([dependencies.bigQuery(accessToken, METRICS_SQL, runParameter(run.run_id)), dependencies.bigQuery(accessToken, ITEMS_SQL, runParameter(run.run_id))]);
+  const [metrics, items] = await Promise.all([dependencies.bigQuery(accessToken, METRICS_SQL, parameters({ run_id: run.run_id })), dependencies.bigQuery(accessToken, ITEMS_SQL, parameters({ window_start: run.window_start, window_end: run.window_end }))]);
   return { status: 'ok', generated_at: new Date().toISOString(), run: { id: run.run_id, window_start: run.window_start, window_end: run.window_end, completed_at: run.completed_at }, metrics, items };
 }
 
@@ -113,4 +113,4 @@ module.exports = async function handler(req, res) {
     return res.status(503).json({ status: 'unavailable' });
   }
 };
-module.exports.__test = { buildSnapshot, decodeRow, LATEST_RUN_SQL, METRICS_SQL, ITEMS_SQL, runParameter };
+module.exports.__test = { buildSnapshot, decodeRow, LATEST_RUN_SQL, METRICS_SQL, ITEMS_SQL, parameters };
