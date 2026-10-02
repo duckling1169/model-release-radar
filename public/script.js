@@ -1,131 +1,154 @@
 (() => {
   const root = document.documentElement;
-  const toggleBtn = document.getElementById('theme-toggle');
   const STORAGE_KEY = 'mrr-theme';
   const sourceNames = { huggingface: 'Hugging Face', arxiv: 'arXiv' };
-  const filters = { source: 'all', tags: new Set() };
-  const systemPrefersDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const setText = (id, value) => { document.getElementById(id).textContent = value; };
-  const formatNumber = (value) => new Intl.NumberFormat().format(Number(value || 0));
-  const clear = (node) => node.replaceChildren();
+  const stageCopy = {
+    huggingface: [
+      ['Fetched', 'Records returned while paging back to the window.', 'raw_response_record_count'],
+      ['In window', 'New public model repos created during the UTC day.', 'raw_window_record_count'],
+      ['Qualified', 'Declare a task, or ship weights or a config.', 'silver_qualified_count'],
+      ['Listed', 'Models in the feed below.', 'gold_item_count'],
+    ],
+    arxiv: [
+      ['Fetched', 'Entries returned while paging back to the window.', 'raw_response_record_count'],
+      ['In window', 'Submitted during the UTC day, in any category.', 'raw_window_record_count'],
+      ['Qualified', 'First submissions in cs.AI, cs.CL or cs.LG.', 'silver_qualified_count'],
+      ['Listed', 'Papers in the feed below.', 'gold_item_count'],
+    ],
+  };
+  const state = { snapshot: null, source: 'huggingface', listSource: 'all', query: '', tags: new Set() };
+  const $ = (id) => document.getElementById(id);
+  const number = (value) => new Intl.NumberFormat().format(Number(value || 0));
   const element = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
     if (text !== undefined && text !== null) node.textContent = text;
     return node;
   };
-  function applyTheme(theme) { root.setAttribute('data-theme', theme); toggleBtn.textContent = theme === 'dark' ? '☀ Light' : '● Dark'; }
   function relativeTime(value) {
     const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
     if (seconds < 60) return 'just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
+    return `${Math.floor(seconds / 86400)} d ago`;
   }
-  applyTheme(localStorage.getItem(STORAGE_KEY) || (systemPrefersDark() ? 'dark' : 'light'));
-  toggleBtn.addEventListener('click', () => { const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; applyTheme(next); localStorage.setItem(STORAGE_KEY, next); });
 
-  function showUnavailable() {
-    setText('live-status', 'Update unavailable');
-    setText('radar-subtitle', 'We couldn’t load the latest update. Please try again in a moment.');
-    ['source-count', 'item-count', 'reconciled-count'].forEach((id) => setText(id, '—'));
-    const grid = document.getElementById('radar-grid'); clear(grid); grid.append(element('p', 'empty-state', 'No releases are available right now.'));
-    setText('filter-count', 'Releases unavailable');
-    const rows = document.getElementById('metrics-rows'); clear(rows); rows.append(element('div', 'table-row table-row-last muted', 'Source counts are unavailable.'));
-    setText('table-footnote', 'Only complete updates appear here; the next one will show when it is ready.');
+  function storedTheme() {
+    try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
   }
-  const itemTags = MrrFilters.itemTags;
-  function updateSelected(button, selected) {
-    button.classList.toggle('is-selected', selected);
-    button.setAttribute('aria-pressed', String(selected));
-  }
-  function renderTagFilters(items) {
-    const tagFilters = document.getElementById('tag-filters');
-    const tags = MrrFilters.availableTags(items);
-    clear(tagFilters);
-    if (!tags.length) {
-      filters.tags.clear();
-      const unavailable = element('button', 'filter-chip filter-empty', 'Tags appear after a release is categorized');
-      unavailable.type = 'button'; unavailable.disabled = true;
-      tagFilters.append(unavailable);
-      return;
-    }
-    filters.tags.forEach((tag) => { if (!tags.includes(tag)) filters.tags.delete(tag); });
-    tags.forEach((tag) => {
-      const button = element('button', `filter-chip ${filters.tags.has(tag) ? 'is-selected' : ''}`, tag);
-      button.type = 'button';
-      button.dataset.tag = tag;
-      button.setAttribute('aria-pressed', String(filters.tags.has(tag)));
-      button.addEventListener('click', () => {
-        if (filters.tags.has(tag)) filters.tags.delete(tag); else filters.tags.add(tag);
-        updateSelected(button, filters.tags.has(tag));
-        renderFilteredItems(items);
-      });
-      tagFilters.append(button);
-    });
-  }
-  function filteredItems(items) {
-    return MrrFilters.filterItems(items, filters.source, filters.tags);
-  }
-  function renderFilteredItems(items) {
-    const visible = filteredItems(items);
-    setText('filter-count', `${visible.length} ${visible.length === 1 ? 'release' : 'releases'}`);
-    const grid = document.getElementById('radar-grid'); clear(grid);
-    if (visible.length) visible.forEach((item) => grid.append(renderCard(item)));
-    else grid.append(element('p', 'empty-state', 'No releases match these filters. Try another source or tag.'));
-  }
-  document.getElementById('source-filters').addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-source]');
-    if (!button) return;
-    filters.source = button.dataset.source;
-    document.querySelectorAll('#source-filters button').forEach((control) => updateSelected(control, control === button));
-    if (window.radarItems) renderFilteredItems(window.radarItems);
+  if (storedTheme()) root.dataset.theme = storedTheme();
+  $('theme-toggle').addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem(STORAGE_KEY, root.dataset.theme); } catch { /* per-viewer convenience only */ }
   });
-  function renderCard(item) {
-    const card = element('article', `card ${item.source === 'arxiv' ? 'card-teal' : 'card-indigo'}`);
-    const top = element('div', 'card-top'); top.append(element('span', 'card-source', sourceNames[item.source] || item.source));
-    const link = element('a', 'card-title', item.title || item.source_id); link.href = item.canonical_url; link.target = '_blank'; link.rel = 'noreferrer';
-    card.append(top, link);
-    if (item.summary) card.append(element('div', 'card-desc', item.summary));
-    if (item.author_or_org) card.append(element('div', 'card-desc card-author', item.author_or_org));
-    if (item.enrichment) {
-      const tagsForItem = itemTags(item);
-      if (tagsForItem.length) {
-        const tags = element('div', 'enrichment-tags');
-        tagsForItem.forEach((tag) => tags.append(element('span', 'enrichment-tag', tag)));
-        card.append(tags);
-      }
-      if (item.enrichment.explanation) {
-        const why = element('div', 'enrichment-why');
-        why.append(element('span', 'enrichment-label', 'Why it matters'), document.createTextNode(item.enrichment.explanation));
-        card.append(why);
-      }
-    }
-    card.append(element('div', 'card-time', `${relativeTime(item.source_published_at)} · ${new Date(item.source_published_at).toLocaleString()}`));
-    return card;
-  }
-  function renderMetrics(metrics, completedAt) {
-    const rows = document.getElementById('metrics-rows'); clear(rows);
-    let rawTotal = 0; let displayedTotal = 0;
-    metrics.forEach((metric, index) => {
-      const raw = Number(metric.raw_window_record_count || 0);
-      const firstSeen = Number(metric.silver_inserted_count || 0);
-      const goldItems = Number(metric.gold_item_count || 0);
-      rawTotal += raw; displayedTotal += goldItems;
-      const row = element('div', `table-row ${index === metrics.length - 1 ? 'table-row-last' : ''}`);
-      row.append(element('div', '', sourceNames[metric.source] || metric.source), element('div', 'mono', formatNumber(raw)), element('div', 'mono', formatNumber(firstSeen)), element('div', `mono ${metric.source === 'arxiv' ? 'match-indigo' : 'match-teal'}`, formatNumber(goldItems)), element('div', 'align-right mono muted', relativeTime(completedAt)));
-      rows.append(row);
+
+  function renderOverview() {
+    const metric = state.snapshot.metrics.find((row) => row.source === state.source) || {};
+    const stages = stageCopy[state.source].map(([name, desc, field]) => ({ name, desc, value: Number(metric[field] || 0) }));
+    $('stages').replaceChildren(...stages.map((stage, index) => {
+      const cell = element('div', 'stage');
+      cell.append(element('span', `icon step-${index}`, String(index + 1)), element('div', 'stage-name', stage.name), element('div', 'stage-desc', stage.desc), element('div', 'stage-num', number(stage.value)));
+      return cell;
+    }));
+    // Funnel bands: square-root scaled so the smaller stages stay visible.
+    const max = Math.max(...stages.map((stage) => stage.value), 1);
+    const y = (value) => 100 - Math.max(Math.sqrt(value / max), 0.04) * 92;
+    const svgNs = 'http://www.w3.org/2000/svg';
+    $('funnel').replaceChildren(...stages.map((stage, index) => {
+      const next = stages[index + 1] || stage;
+      const x0 = index * 100; const x1 = x0 + 100;
+      const path = document.createElementNS(svgNs, 'path');
+      path.setAttribute('d', `M${x0},${y(stage.value)} C${x0 + 50},${y(stage.value)} ${x0 + 50},${y(next.value)} ${x1},${y(next.value)} L${x1},100 L${x0},100 Z`);
+      path.setAttribute('class', `band band-${index}`);
+      return path;
+    }));
+    const [, inWindow, qualified] = stages;
+    $('excluded').textContent = number(Math.max(inWindow.value - qualified.value, 0));
+    $('excluded-desc').textContent = state.source === 'arxiv'
+      ? 'Revisions and papers outside the three categories.'
+      : 'No task, model artifact or config. Kept in Silver with a reason.';
+    document.querySelectorAll('#source-tabs .tab').forEach((tab) => {
+      const active = tab.dataset.source === state.source;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
     });
-    setText('source-count', String(metrics.length)); setText('item-count', formatNumber(displayedTotal)); setText('reconciled-count', `${formatNumber(rawTotal)} → ${formatNumber(displayedTotal)}`);
   }
-  function renderSnapshot(snapshot) {
-    setText('live-status', `Latest update · ${relativeTime(snapshot.run.completed_at)}`);
-    setText('radar-subtitle', `New items from the update ending ${new Date(snapshot.run.window_end).toLocaleString()}.`);
-    window.radarItems = snapshot.items;
-    renderTagFilters(snapshot.items);
-    renderFilteredItems(snapshot.items);
-    renderMetrics(snapshot.metrics, snapshot.run.completed_at);
-    setText('table-footnote', `Update ${snapshot.run.id} finished ${relativeTime(snapshot.run.completed_at)}. Showing ${snapshot.metrics.length} sources; partial updates stay out of this view.`);
+
+  function renderTags() {
+    const tags = MrrFilters.availableTags(state.snapshot.items).filter((tag) => tag !== 'unclassified');
+    const container = $('tag-filters');
+    container.hidden = !tags.length;
+    container.replaceChildren(...tags.map((tag) => {
+      const button = element('button', `chip ${state.tags.has(tag) ? 'is-active' : ''}`, tag);
+      button.type = 'button';
+      button.setAttribute('aria-pressed', String(state.tags.has(tag)));
+      button.addEventListener('click', () => {
+        if (state.tags.has(tag)) state.tags.delete(tag); else state.tags.add(tag);
+        renderTags(); renderRows();
+      });
+      return button;
+    }));
   }
-  fetch('/api/radar').then((response) => response.ok ? response.json() : Promise.reject(new Error(`Radar API ${response.status}`))).then((snapshot) => snapshot.status === 'ok' ? renderSnapshot(snapshot) : showUnavailable()).catch(showUnavailable);
+
+  function renderRow(item) {
+    const row = element('li', 'row');
+    row.append(element('span', `dot ${item.source}`));
+    const main = element('div', 'row-main');
+    const link = element('a', 'row-title', item.title || item.source_id);
+    link.href = item.canonical_url; link.target = '_blank'; link.rel = 'noreferrer';
+    main.append(link);
+    MrrFilters.itemTags(item).filter((tag) => tag !== 'unclassified').forEach((tag) => main.append(element('span', 'pill', tag)));
+    if (item.enrichment?.explanation) main.append(element('div', 'row-why', item.enrichment.explanation));
+    const author = element('div', 'row-cell row-author');
+    author.append(element('span', 'cell-label', item.source === 'arxiv' ? 'Authors' : 'Owner'), element('span', 'cell-value', item.author_or_org || '—'));
+    const source = element('div', 'row-cell');
+    source.append(element('span', 'cell-label', 'Source'), element('span', 'cell-value', sourceNames[item.source] || item.source));
+    const time = element('time', 'row-time', relativeTime(item.source_published_at));
+    time.dateTime = item.source_published_at; time.title = new Date(item.source_published_at).toLocaleString();
+    row.append(main, author, source, time);
+    return row;
+  }
+
+  function renderRows() {
+    const query = state.query.trim().toLowerCase();
+    const visible = MrrFilters.filterItems(state.snapshot.items, state.listSource, state.tags)
+      .filter((item) => !query || `${item.title} ${item.author_or_org || ''}`.toLowerCase().includes(query));
+    $('release-count').textContent = number(visible.length);
+    $('rows').replaceChildren(...(visible.length ? visible.map(renderRow) : [element('li', 'row-empty', 'No releases match these filters.')]));
+  }
+
+  function render(snapshot) {
+    state.snapshot = snapshot;
+    const { run } = snapshot;
+    const day = new Date(run.window_start).toLocaleDateString(undefined, { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
+    $('live-status').lastChild.textContent = `Updated ${relativeTime(run.completed_at)}`;
+    $('window-label').textContent = `${day} · UTC window`;
+    snapshot.metrics.forEach((metric) => {
+      const count = document.querySelector(`[data-count="${metric.source}"]`);
+      if (count) count.textContent = number(metric.gold_item_count);
+    });
+    $('updated').textContent = relativeTime(run.completed_at);
+    $('updated-desc').textContent = `Run ${run.id}. Partial runs never replace a complete one.`;
+    renderOverview(); renderTags(); renderRows();
+  }
+
+  function unavailable() {
+    $('live-status').classList.add('is-down');
+    $('live-status').lastChild.textContent = 'Update unavailable';
+    $('rows').replaceChildren(element('li', 'row-empty', 'The latest update couldn’t be loaded. Try again in a moment.'));
+  }
+
+  $('source-tabs').addEventListener('click', (event) => {
+    const tab = event.target.closest('[data-source]');
+    if (!tab || !state.snapshot) return;
+    state.source = tab.dataset.source; renderOverview();
+  });
+  $('source-filter').addEventListener('change', (event) => { state.listSource = event.target.value; if (state.snapshot) renderRows(); });
+  $('search').addEventListener('input', (event) => { state.query = event.target.value; if (state.snapshot) renderRows(); });
+
+  fetch('/api/radar')
+    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`Radar API ${response.status}`))))
+    .then((snapshot) => (snapshot.status === 'ok' ? render(snapshot) : unavailable()))
+    .catch(unavailable);
 })();

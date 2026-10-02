@@ -4,105 +4,68 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Model Release Radar</title>
-<meta name="description" content="A daily list of new AI models and papers, with clear source counts.">
+<meta name="description" content="New Hugging Face models and arXiv AI papers each day, with the pipeline's own counts.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand"><div class="brand-mark">MR</div><div class="brand-name">Model Release Radar</div></div>
-  <div class="chips"><span class="chip">BigQuery</span><span class="chip">Hugging Face</span><span class="chip">arXiv</span></div>
-  <div class="status"><span class="pulse-dot"></span><span id="live-status" class="status-pill">Loading the latest update…</span><button id="theme-toggle" class="toggle-btn" type="button">● Dark</button></div>
-</header>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Model Release Radar</div>
+    <div class="topbar-right">
+      <span id="live-status" class="status"><span class="dot"></span>Loading…</span>
+      <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode">◐</button>
+      <a class="icon-btn" href="https://github.com/duckling1169/model-release-radar" aria-label="Source on GitHub">
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.66 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>
+      </a>
+    </div>
+  </header>
 
-<section class="hero">
-  <div class="eyebrow">NEW AI MODELS AND PAPERS, EACH DAY</div>
-  <h1>New AI models and papers, collected each day.</h1>
-  <p class="lede">Track new public Hugging Face model repositories and newly submitted AI papers from arXiv. Source counts show how each update made it to this list.</p>
-  <div class="stat-row">
-    <div class="stat"><div id="source-count" class="stat-num">—</div><div class="stat-label">sources</div></div>
-    <div class="stat"><div id="item-count" class="stat-num">—</div><div class="stat-label">items in latest run</div></div>
-    <div class="stat stat-last"><div id="reconciled-count" class="stat-num">—</div><div class="stat-label">captured → listed</div></div>
-  </div>
-</section>
+  <section class="panel">
+    <div class="panel-tabs" id="source-tabs" role="tablist" aria-label="Pipeline counts by source">
+      <button class="tab is-active" type="button" data-source="huggingface" role="tab" aria-selected="true">Hugging Face <span class="tab-num" data-count="huggingface">—</span></button>
+      <button class="tab" type="button" data-source="arxiv" role="tab" aria-selected="false">arXiv <span class="tab-num" data-count="arxiv">—</span></button>
+      <span id="window-label" class="panel-meta"></span>
+    </div>
+    <div class="overview">
+      <div class="card funnel-card">
+        <div class="stages" id="stages"></div>
+        <svg id="funnel" class="funnel" viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+      </div>
+      <div class="side">
+        <div class="card side-card"><span class="icon amber" aria-hidden="true">⊘</span><div class="stage-name">Excluded</div><div id="excluded-desc" class="stage-desc">Records in the window that didn't qualify.</div><div id="excluded" class="stage-num">—</div></div>
+        <div class="card side-card"><span class="icon green" aria-hidden="true">✓</span><div class="stage-name">Last update</div><div id="updated-desc" class="stage-desc">Only complete runs are shown.</div><div id="updated" class="stage-num">—</div></div>
+      </div>
+    </div>
+  </section>
 
-<section class="radar">
-  <div class="section-title">Today's radar</div>
-  <div id="radar-subtitle" class="section-sub">Loading the latest complete update…</div>
-  <div id="filter-bar" class="filter-bar" aria-label="Filter today's radar">
-    <div class="filter-group">
-      <span class="filter-label">Source</span>
-      <div id="source-filters" class="filter-controls" role="group" aria-label="Filter by source">
-        <button class="filter-chip is-selected" type="button" data-source="all" aria-pressed="true">All</button>
-        <button class="filter-chip" type="button" data-source="huggingface" aria-pressed="false">Hugging Face</button>
-        <button class="filter-chip" type="button" data-source="arxiv" aria-pressed="false">arXiv</button>
+  <section class="panel">
+    <div class="list-head">
+      <div class="panel-tabs plain"><span class="tab is-active">Releases <span id="release-count" class="tab-num">—</span></span></div>
+      <div class="list-tools">
+        <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search releases" aria-label="Search releases"></label>
+        <label class="select">Source
+          <select id="source-filter"><option value="all">All</option><option value="huggingface">Hugging Face</option><option value="arxiv">arXiv</option></select>
+        </label>
       </div>
     </div>
-    <div class="filter-group filter-tags-group">
-      <span class="filter-label">Tags</span>
-      <div id="tag-filters" class="filter-controls" role="group" aria-label="Filter by tag">
-        <button class="filter-chip filter-empty" type="button" disabled>Tags appear after a release is categorized</button>
-      </div>
-    </div>
-    <div id="filter-count" class="filter-count" aria-live="polite">Loading releases…</div>
-  </div>
-  <div class="card-grid" id="radar-grid"><p class="empty-state">Loading…</p></div>
-</section>
+    <div id="tag-filters" class="tags" role="group" aria-label="Filter by tag"></div>
+    <ol id="rows" class="rows"><li class="row-empty">Loading…</li></ol>
+  </section>
 
-<section class="transparency">
-  <div class="section-title">Where the numbers come from</div>
-  <div class="section-sub">Compare captured records with the items shown here for each source.</div>
-  <div class="table-card">
-    <div class="table-row table-head"><div>SOURCE</div><div>CAPTURED (24H)</div><div>NEW</div><div>LISTED</div><div class="align-right">UPDATED</div></div>
-    <div id="metrics-rows"><div class="table-row table-row-last"><div class="muted">Loading metrics…</div></div></div>
-  </div>
-  <div id="table-footnote" class="table-footnote">Waiting for the latest complete update.</div>
-  <div class="architecture">
-    <div class="section-title">How the daily update works</div>
-    <div class="section-sub">A small daily process with a public, read-only view.</div>
-    <div class="architecture-diagram" aria-label="Production data and control flow diagram">
-      <span class="diagram-lane-label">Control path</span>
-      <div class="architecture-lane architecture-lane-core">
-        <div class="diagram-node diagram-node-control"><span class="node-kicker">SCHEDULER · 07:20 UTC</span><strong>Daily trigger</strong></div>
-        <span class="diagram-arrow" aria-hidden="true">→</span>
-        <div class="diagram-node diagram-node-control"><span class="node-kicker">WORKFLOWS</span><strong>Explicit preceding<br>UTC-day window</strong></div>
-        <span class="diagram-arrow" aria-hidden="true">→</span>
-        <div class="diagram-node"><span class="node-kicker">PRIVATE CLOUD RUN JOB</span><strong>Ingest</strong></div>
-      </div>
-      <div class="diagram-connector" aria-hidden="true">↓</div>
-      <span class="diagram-lane-label">Data path</span>
-      <div class="architecture-lane architecture-lane-data">
-        <div class="diagram-node"><span class="node-kicker">BIGQUERY</span><strong>Append-only<br>Bronze</strong></div>
-        <span class="diagram-arrow" aria-hidden="true">→</span>
-        <div class="diagram-node diagram-node-control"><span class="node-kicker">DATAFORM</span><strong>Hugging Face Silver<br>&amp; assertions</strong></div>
-        <span class="diagram-arrow" aria-hidden="true">→</span>
-        <div class="diagram-node diagram-node-gold"><span class="node-kicker">BIGQUERY</span><strong>Complete Gold<br>snapshot</strong><small>both Silver sources</small></div>
-      </div>
-      <div class="diagram-note">The ingest Job also writes source-specific arXiv Silver; Gold materializes both Silver sources.</div>
-      <div class="architecture-branches">
-        <div class="architecture-branch">
-          <span class="branch-label">Non-blocking enrichment · Workflow invokes only after complete Gold</span>
-          <div class="branch-flow"><div class="diagram-node diagram-node-gold"><span class="node-kicker">BIGQUERY READ</span><strong>Gold snapshot</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">CLOUD RUN</span><strong>Enrichment</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">BIGQUERY WRITE</span><strong><code>mrr_enrichment</code></strong></div></div>
-          <div class="diagram-dependency"><div class="diagram-node diagram-node-secret"><span class="node-kicker">SECRET MANAGER</span><strong>Gemini key</strong><small>20 RPD · paced</small></div><span class="diagram-arrow" aria-hidden="true">→</span><span>Enrichment only</span></div>
-        </div>
-        <div class="architecture-branch">
-          <span class="branch-label">Independent Gold health path · 08:00 UTC</span>
-          <div class="branch-flow branch-flow-health"><div class="diagram-node diagram-node-control"><span class="node-kicker">SCHEDULER</span><strong>Daily trigger</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node diagram-node-control"><span class="node-kicker">WORKFLOWS</span><strong>Health workflow</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">BIGQUERY</span><strong>Gold query</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">MONITORING</span><strong>Log-based email<br>alert</strong></div></div>
-        </div>
-      </div>
-      <div class="architecture-access">
-        <div class="diagram-node diagram-node-control"><span class="node-kicker">VERCEL OIDC</span><strong>Keyless identity</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">READ-ONLY API</span><strong>Reads Gold +<br><code>mrr_enrichment</code> only</strong></div><span class="diagram-arrow" aria-hidden="true">→</span><div class="diagram-node"><span class="node-kicker">BROWSER</span><strong>Dashboard</strong></div>
-      </div>
-    </div>
-    <div class="architecture-callouts">
-      <div><strong>Traceable lineage</strong><span>Append-only capture retains source and run history.</span></div>
-      <div><strong>Least privilege</strong><span>Separate identities limit each scheduler, job, and reader.</span></div>
-      <div><strong>Safe failures</strong><span>No whole-job retry; enrichment cannot invalidate Gold.</span></div>
-      <div><strong>No credentials in the UI</strong><span>Vercel uses OIDC; the browser receives neither secrets nor model metadata.</span></div>
-    </div>
-  </div>
-</section>
+  <section class="panel how">
+    <div class="how-title">How it works</div>
+    <ol class="how-steps">
+      <li><b>07:20 UTC</b>Cloud Scheduler starts a Workflow that collects yesterday's UTC window.</li>
+      <li><b>Bronze</b>Raw source pages land in BigQuery, append-only, with a fetch manifest.</li>
+      <li><b>Silver</b>arXiv is normalized in Python and Hugging Face in Dataform, deduplicated by ID.</li>
+      <li><b>Gold</b>Dataform builds this feed and these counts, guarded by assertions.</li>
+      <li><b>Enrichment</b>Gemini adds tags afterwards on the free tier. It can't block the feed.</li>
+      <li><b>This page</b>A Vercel function reads Gold through OIDC. No keys anywhere.</li>
+    </ol>
+  </section>
+</div>
 <script src="filter.js"></script>
 <script src="script.js"></script>
 </body>
